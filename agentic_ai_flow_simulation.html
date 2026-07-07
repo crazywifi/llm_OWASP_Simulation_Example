@@ -1,0 +1,1630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agentic AI Application Flow - Interactive Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 2px solid #ff9800;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            color: #ff9800;
+            font-size: 2.4em;
+            margin-bottom: 15px;
+        }
+
+        /* Definition Box */
+        .definition-box {
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.15), rgba(255, 152, 0, 0.05));
+            border: 2px solid rgba(255, 152, 0, 0.4);
+            border-radius: 15px;
+            padding: 25px 30px;
+            margin: 20px 0 40px;
+            text-align: left;
+        }
+
+        .definition-box h2 {
+            color: #ff9800;
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .definition-box p {
+            color: #ddd;
+            font-size: 1.1em;
+            line-height: 1.8;
+        }
+
+        .definition-box .highlight {
+            color: #ffb74d;
+            font-weight: 600;
+        }
+
+        .definition-box .comparison {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .comparison-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px 20px;
+            border-radius: 10px;
+        }
+
+        .comparison-item h4 {
+            margin-bottom: 10px;
+        }
+
+        .comparison-item.regular h4 {
+            color: #64b5f6;
+        }
+
+        .comparison-item.agentic h4 {
+            color: #ff9800;
+        }
+
+        .comparison-item p {
+            font-size: 0.95em;
+            color: #aaa;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+            box-shadow: 0 5px 20px rgba(255, 152, 0, 0.4);
+        }
+
+        .btn-start:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(255, 152, 0, 0.6);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #444, #333);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* User Input Simulation */
+        .user-input-simulation {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 2px solid rgba(33, 150, 243, 0.3);
+        }
+
+        .user-input-simulation h3 {
+            color: #64b5f6;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .user-avatar-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #2196f3, #1976d2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            flex-shrink: 0;
+        }
+
+        .chat-input-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 15px 20px;
+            color: #fff;
+            font-size: 1em;
+            font-family: inherit;
+            resize: none;
+            min-height: 60px;
+            transition: all 0.3s ease;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #2196f3;
+        }
+
+        .chat-input:disabled {
+            opacity: 0.6;
+        }
+
+        .send-btn {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #2196f3, #1976d2);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 1.3em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            transform: scale(1.1);
+            box-shadow: 0 5px 20px rgba(33, 150, 243, 0.5);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Sent Message Bubble */
+        .sent-message {
+            display: none;
+            background: linear-gradient(135deg, #2196f3, #1976d2);
+            border-radius: 20px 20px 5px 20px;
+            padding: 15px 20px;
+            margin-left: 65px;
+            color: white;
+            font-size: 1.05em;
+            line-height: 1.5;
+            max-width: 80%;
+            animation: messageSent 0.5s ease;
+            position: relative;
+        }
+
+        .sent-message.visible {
+            display: block;
+        }
+
+        .sent-message::after {
+            content: '✓✓';
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+            font-size: 0.7em;
+            opacity: 0.7;
+        }
+
+        @keyframes messageSent {
+            0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.9);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Message Flying Animation */
+        .message-flying {
+            position: fixed;
+            background: linear-gradient(135deg, #2196f3, #1976d2);
+            border-radius: 15px;
+            padding: 10px 20px;
+            color: white;
+            font-size: 0.9em;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            white-space: nowrap;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .message-flying.animate {
+            animation: flyToAgent 1.5s ease-in-out forwards;
+        }
+
+        @keyframes flyToAgent {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(0.8);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+        }
+
+        /* Agent Receiving Indicator */
+        .agent-receiving {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .agent-receiving.visible {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .agent-receiving .agent-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5em;
+            margin: 0 auto 15px;
+            animation: pulse-agent 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse-agent {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.5); }
+            50% { box-shadow: 0 0 0 20px rgba(255, 152, 0, 0); }
+        }
+
+        .agent-receiving p {
+            color: #ff9800;
+            font-size: 1.1em;
+        }
+
+        .receiving-dots {
+            display: inline-flex;
+            gap: 4px;
+            margin-left: 5px;
+        }
+
+        .receiving-dots span {
+            width: 8px;
+            height: 8px;
+            background: #ff9800;
+            border-radius: 50%;
+            animation: dotPulse 1.4s ease-in-out infinite;
+        }
+
+        .receiving-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .receiving-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes dotPulse {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #888;
+            font-size: 0.9em;
+            margin-left: 65px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .typing-indicator.visible {
+            opacity: 1;
+        }
+
+        .typing-indicator .dots {
+            display: flex;
+            gap: 3px;
+        }
+
+        .typing-indicator .dots span {
+            width: 6px;
+            height: 6px;
+            background: #888;
+            border-radius: 50%;
+            animation: typingDot 1s ease-in-out infinite;
+        }
+
+        .typing-indicator .dots span:nth-child(2) { animation-delay: 0.15s; }
+        .typing-indicator .dots span:nth-child(3) { animation-delay: 0.3s; }
+
+        @keyframes typingDot {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        /* Input Received Indicator */
+        .input-received-indicator {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+            animation: inputAppear 0.5s ease;
+        }
+
+        .input-received-indicator.visible {
+            display: flex;
+        }
+
+        @keyframes inputAppear {
+            0% {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .input-bubble {
+            background: linear-gradient(135deg, #2196f3, #1976d2);
+            border-radius: 20px;
+            padding: 12px 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 5px 20px rgba(33, 150, 243, 0.4);
+        }
+
+        .input-icon {
+            font-size: 1.3em;
+            animation: bounce 0.5s ease;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .input-text {
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .input-arrow {
+            font-size: 1.5em;
+            color: #2196f3;
+            margin-top: 10px;
+            animation: arrowPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes arrowPulse {
+            0%, 100% { opacity: 0.5; transform: translateY(0); }
+            50% { opacity: 1; transform: translateY(5px); }
+        }
+
+        /* Scenario Selector */
+        .scenario-selector {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .scenario-selector h3 {
+            color: #ff9800;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .scenarios {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .scenario-btn {
+            padding: 12px 25px;
+            background: rgba(255, 152, 0, 0.1);
+            border: 2px solid rgba(255, 152, 0, 0.3);
+            border-radius: 10px;
+            color: #ffb74d;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .scenario-btn:hover, .scenario-btn.active {
+            background: rgba(255, 152, 0, 0.3);
+            border-color: #ff9800;
+        }
+
+        /* Main Simulation Area */
+        .simulation-area {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            gap: 20px;
+            min-height: 600px;
+        }
+
+        @media (max-width: 1100px) {
+            .simulation-area {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Side Panels */
+        .side-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .side-panel h3 {
+            color: #ff9800;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Log Panel */
+        .log-panel {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 10px;
+            margin: 8px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            font-size: 0.85em;
+            border-left: 3px solid #666;
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.3s ease;
+        }
+
+        .log-entry.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .log-entry.user { border-left-color: #2196f3; }
+        .log-entry.llm { border-left-color: #9c27b0; }
+        .log-entry.plan { border-left-color: #ff9800; }
+        .log-entry.tool { border-left-color: #4caf50; }
+        .log-entry.observe { border-left-color: #00bcd4; }
+        .log-entry.response { border-left-color: #e91e63; }
+
+        .log-entry .time {
+            color: #666;
+            font-size: 0.8em;
+        }
+
+        /* Main Flow Area */
+        .flow-area {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Flow Steps */
+        .flow-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+        }
+
+        .flow-step {
+            width: 100%;
+            max-width: 500px;
+            opacity: 0.3;
+            transform: scale(0.95);
+            transition: all 0.5s ease;
+        }
+
+        .flow-step.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .flow-step.completed {
+            opacity: 0.7;
+        }
+
+        .step-box {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            padding: 20px 25px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            position: relative;
+        }
+
+        .step-box.active {
+            border-color: #ff9800;
+            box-shadow: 0 0 30px rgba(255, 152, 0, 0.3);
+        }
+
+        .step-box.completed {
+            border-color: #4caf50;
+        }
+
+        .step-number {
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            width: 30px;
+            height: 30px;
+            background: #ff9800;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .step-box.completed .step-number {
+            background: #4caf50;
+        }
+
+        .step-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .step-title {
+            font-size: 1.2em;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+
+        .step-desc {
+            color: #aaa;
+            font-size: 0.9em;
+        }
+
+        .step-content {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            text-align: left;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85em;
+            color: #4caf50;
+            min-height: 60px;
+            display: none;
+        }
+
+        .step-box.active .step-content,
+        .step-box.completed .step-content {
+            display: block;
+        }
+
+        /* Arrow between steps */
+        .flow-arrow {
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #444;
+            font-size: 1.5em;
+            opacity: 0.3;
+            transition: all 0.3s ease;
+        }
+
+        .flow-arrow.active {
+            color: #ff9800;
+            opacity: 1;
+        }
+
+        .flow-arrow.completed {
+            color: #4caf50;
+            opacity: 0.7;
+        }
+
+        /* Loop indicator */
+        .loop-indicator {
+            position: absolute;
+            right: -60px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            color: #ff9800;
+            font-size: 0.8em;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .loop-indicator.visible {
+            opacity: 1;
+        }
+
+        .loop-arrow {
+            font-size: 2em;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* Tools Panel */
+        .tool-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            margin: 8px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            opacity: 0.5;
+            transition: all 0.3s ease;
+        }
+
+        .tool-item.available {
+            opacity: 1;
+        }
+
+        .tool-item.active {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+        }
+
+        .tool-item.used {
+            background: rgba(76, 175, 80, 0.1);
+            opacity: 0.7;
+        }
+
+        .tool-icon {
+            font-size: 1.3em;
+        }
+
+        .tool-name {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .tool-status {
+            margin-left: auto;
+            font-size: 0.8em;
+            color: #888;
+        }
+
+        .tool-item.active .tool-status {
+            color: #4caf50;
+        }
+
+        /* User Message Display */
+        .user-message {
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.2), rgba(33, 150, 243, 0.1));
+            border: 1px solid rgba(33, 150, 243, 0.4);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .user-message h4 {
+            color: #64b5f6;
+            margin-bottom: 10px;
+        }
+
+        .user-message p {
+            color: #fff;
+            font-size: 1.1em;
+        }
+
+        /* Final Response Display */
+        .final-response {
+            background: linear-gradient(135deg, rgba(233, 30, 99, 0.2), rgba(233, 30, 99, 0.1));
+            border: 2px solid rgba(233, 30, 99, 0.4);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .final-response.visible {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .final-response h4 {
+            color: #e91e63;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .final-response .response-content {
+            color: #fff;
+            line-height: 1.7;
+        }
+
+        /* Key Concepts Section */
+        .key-concepts {
+            margin-top: 40px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+        }
+
+        .key-concepts h2 {
+            color: #ff9800;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .concepts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .concept-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .concept-card h4 {
+            color: #ffb74d;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .concept-card p {
+            color: #aaa;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        /* Iteration Counter */
+        .iteration-counter {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 152, 0, 0.1);
+            border-radius: 10px;
+            display: none;
+        }
+
+        .iteration-counter.visible {
+            display: block;
+        }
+
+        .iteration-counter span {
+            color: #ff9800;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        /* Thinking Animation */
+        .thinking {
+            display: inline-flex;
+            gap: 4px;
+        }
+
+        .thinking span {
+            width: 8px;
+            height: 8px;
+            background: #ff9800;
+            border-radius: 50%;
+            animation: thinking 1.4s ease-in-out infinite;
+        }
+
+        .thinking span:nth-child(2) { animation-delay: 0.2s; }
+        .thinking span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes thinking {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Agentic AI Application Flow</h1>
+            <p>Interactive Simulation - See How AI Agents Work Behind the Scenes</p>
+        </header>
+
+        <!-- Definition Box -->
+        <div class="definition-box">
+            <h2>📖 What is an Agentic AI Application?</h2>
+            <p>
+                An <span class="highlight">Agentic AI</span> is an AI system that can <span class="highlight">autonomously take actions</span> to achieve a goal. 
+                Unlike a regular chatbot that just answers questions, an Agentic AI can <span class="highlight">plan</span>, 
+                <span class="highlight">use tools</span> (like searching the web, reading files, calling APIs), 
+                <span class="highlight">observe results</span>, and <span class="highlight">decide what to do next</span> — all by itself.
+            </p>
+            <p style="margin-top: 15px;">
+                Think of it like this: A regular AI is like a <strong>consultant</strong> who gives advice. 
+                An Agentic AI is like an <strong>employee</strong> who actually does the work for you.
+            </p>
+            
+            <div class="comparison">
+                <div class="comparison-item regular">
+                    <h4>🗣️ Regular LLM (ChatGPT-style)</h4>
+                    <p>User asks → AI thinks → AI responds<br><br>
+                    <strong>Example:</strong> "How do I book a flight?"<br>
+                    <em>AI explains the steps but doesn't book it.</em></p>
+                </div>
+                <div class="comparison-item agentic">
+                    <h4>🤖 Agentic AI</h4>
+                    <p>User asks → AI plans → AI uses tools → AI checks results → AI responds with completed task<br><br>
+                    <strong>Example:</strong> "Book me a flight to NYC"<br>
+                    <em>AI searches flights, compares prices, books the best one, sends confirmation.</em></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scenario Selector -->
+        <div class="scenario-selector">
+            <h3>🎯 Choose a Scenario to Simulate</h3>
+            <div class="scenarios">
+                <button class="scenario-btn active" data-scenario="research">📚 Research Task</button>
+                <button class="scenario-btn" data-scenario="booking">✈️ Booking Task</button>
+                <button class="scenario-btn" data-scenario="code">💻 Code Task</button>
+            </div>
+        </div>
+
+        <!-- User Input Simulation -->
+        <div class="user-input-simulation">
+            <h3>💬 Send Your Prompt to the AI Agent</h3>
+            <div class="chat-container">
+                <div class="user-avatar-row">
+                    <div class="user-avatar">👤</div>
+                    <div class="chat-input-area">
+                        <div class="chat-input-wrapper">
+                            <textarea class="chat-input" id="chatInput" placeholder="Type your prompt here... (or use a scenario above)"></textarea>
+                            <button class="send-btn" id="sendBtn" title="Send Message">➤</button>
+                        </div>
+                        <div class="typing-indicator" id="typingIndicator">
+                            <span>User is typing</span>
+                            <div class="dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="sent-message" id="sentMessage"></div>
+            </div>
+        </div>
+
+        <!-- Agent Receiving Indicator -->
+        <div class="agent-receiving" id="agentReceiving">
+            <div class="agent-icon">🤖</div>
+            <p>Agent Receiving Input
+                <span class="receiving-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </span>
+            </p>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="btn btn-reset" id="resetBtn">🔄 Reset Simulation</button>
+        </div>
+
+        <!-- Flying Message Element -->
+        <div class="message-flying" id="flyingMessage"></div>
+
+        <!-- Main Simulation Area -->
+        <div class="simulation-area">
+            
+            <!-- Activity Log Panel -->
+            <div class="side-panel">
+                <h3>📋 Activity Log</h3>
+                <div class="log-panel" id="logPanel">
+                    <!-- Logs will be added here -->
+                </div>
+            </div>
+
+            <!-- Main Flow -->
+            <div class="flow-area">
+                <div class="iteration-counter" id="iterationCounter">
+                    🔄 Iteration: <span id="iterationNum">1</span>
+                </div>
+
+                <!-- Input Received Indicator -->
+                <div class="input-received-indicator" id="inputReceivedIndicator">
+                    <div class="input-bubble">
+                        <span class="input-icon">📨</span>
+                        <span class="input-text" id="inputReceivedText">Input received!</span>
+                    </div>
+                    <div class="input-arrow">⬇️</div>
+                </div>
+
+                <div class="flow-container">
+                    <!-- Step 1: Receive & Understand -->
+                    <div class="flow-step" id="step1">
+                        <div class="step-box">
+                            <div class="step-number">1</div>
+                            <div class="step-icon">📥</div>
+                            <div class="step-title">Receive & Understand</div>
+                            <div class="step-desc">LLM receives user input and understands the intent</div>
+                            <div class="step-content" id="step1Content"></div>
+                        </div>
+                    </div>
+
+                    <div class="flow-arrow" id="arrow1">⬇️</div>
+
+                    <!-- Step 2: Set Goal -->
+                    <div class="flow-step" id="step2">
+                        <div class="step-box">
+                            <div class="step-number">2</div>
+                            <div class="step-icon">🎯</div>
+                            <div class="step-title">Define Goal</div>
+                            <div class="step-desc">Agent determines the end goal to achieve</div>
+                            <div class="step-content" id="step2Content"></div>
+                        </div>
+                    </div>
+
+                    <div class="flow-arrow" id="arrow2">⬇️</div>
+
+                    <!-- Step 3: Create Plan -->
+                    <div class="flow-step" id="step3">
+                        <div class="step-box">
+                            <div class="step-number">3</div>
+                            <div class="step-icon">📝</div>
+                            <div class="step-title">Create Plan</div>
+                            <div class="step-desc">Agent breaks down goal into actionable steps</div>
+                            <div class="step-content" id="step3Content"></div>
+                        </div>
+                    </div>
+
+                    <div class="flow-arrow" id="arrow3">⬇️</div>
+
+                    <!-- Step 4: Select Tool -->
+                    <div class="flow-step" id="step4">
+                        <div class="step-box">
+                            <div class="step-number">4</div>
+                            <div class="step-icon">🔧</div>
+                            <div class="step-title">Select Tool</div>
+                            <div class="step-desc">Agent chooses the right tool for current step</div>
+                            <div class="step-content" id="step4Content"></div>
+                        </div>
+                    </div>
+
+                    <div class="flow-arrow" id="arrow4">⬇️</div>
+
+                    <!-- Step 5: Execute Tool -->
+                    <div class="flow-step" id="step5">
+                        <div class="step-box">
+                            <div class="step-number">5</div>
+                            <div class="step-icon">⚡</div>
+                            <div class="step-title">Execute Tool</div>
+                            <div class="step-desc">Tool runs and performs the action</div>
+                            <div class="step-content" id="step5Content"></div>
+                        </div>
+                    </div>
+
+                    <div class="flow-arrow" id="arrow5">⬇️</div>
+
+                    <!-- Step 6: Observe Result -->
+                    <div class="flow-step" id="step6">
+                        <div class="step-box">
+                            <div class="step-number">6</div>
+                            <div class="step-icon">👁️</div>
+                            <div class="step-title">Observe & Reason</div>
+                            <div class="step-desc">Agent analyzes result and decides next action</div>
+                            <div class="step-content" id="step6Content"></div>
+                            <div class="loop-indicator" id="loopIndicator">
+                                <div class="loop-arrow">🔄</div>
+                                <div>Loop back<br>if needed</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flow-arrow" id="arrow6">⬇️</div>
+
+                    <!-- Step 7: Generate Response -->
+                    <div class="flow-step" id="step7">
+                        <div class="step-box">
+                            <div class="step-number">7</div>
+                            <div class="step-icon">💬</div>
+                            <div class="step-title">Generate Response</div>
+                            <div class="step-desc">Agent compiles final response for user</div>
+                            <div class="step-content" id="step7Content"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Final Response -->
+                <div class="final-response" id="finalResponse">
+                    <h4>✅ Final Response to User:</h4>
+                    <div class="response-content" id="finalResponseContent"></div>
+                </div>
+            </div>
+
+            <!-- Tools Panel -->
+            <div class="side-panel">
+                <h3>🧰 Available Tools</h3>
+                <div id="toolsPanel">
+                    <div class="tool-item available" data-tool="web_search">
+                        <span class="tool-icon">🔍</span>
+                        <span class="tool-name">Web Search</span>
+                        <span class="tool-status">Ready</span>
+                    </div>
+                    <div class="tool-item available" data-tool="read_file">
+                        <span class="tool-icon">📄</span>
+                        <span class="tool-name">Read File</span>
+                        <span class="tool-status">Ready</span>
+                    </div>
+                    <div class="tool-item available" data-tool="write_file">
+                        <span class="tool-icon">✍️</span>
+                        <span class="tool-name">Write File</span>
+                        <span class="tool-status">Ready</span>
+                    </div>
+                    <div class="tool-item available" data-tool="api_call">
+                        <span class="tool-icon">🔗</span>
+                        <span class="tool-name">API Call</span>
+                        <span class="tool-status">Ready</span>
+                    </div>
+                    <div class="tool-item available" data-tool="calculator">
+                        <span class="tool-icon">🔢</span>
+                        <span class="tool-name">Calculator</span>
+                        <span class="tool-status">Ready</span>
+                    </div>
+                    <div class="tool-item available" data-tool="code_executor">
+                        <span class="tool-icon">💻</span>
+                        <span class="tool-name">Code Executor</span>
+                        <span class="tool-status">Ready</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Concepts -->
+        <div class="key-concepts">
+            <h2>🔑 Key Concepts in Agentic AI</h2>
+            <div class="concepts-grid">
+                <div class="concept-card">
+                    <h4>🎯 Goal-Oriented</h4>
+                    <p>Unlike regular chatbots, agents have a clear goal and work towards completing it, not just answering questions.</p>
+                </div>
+                <div class="concept-card">
+                    <h4>🔧 Tool Use</h4>
+                    <p>Agents can use external tools (APIs, databases, web search) to gather information and take actions.</p>
+                </div>
+                <div class="concept-card">
+                    <h4>🔄 Iterative Loop</h4>
+                    <p>Agents work in loops: Plan → Act → Observe → Re-plan. They keep going until the goal is achieved.</p>
+                </div>
+                <div class="concept-card">
+                    <h4>🧠 Reasoning</h4>
+                    <p>After each action, the agent reasons about the result and decides what to do next autonomously.</p>
+                </div>
+                <div class="concept-card">
+                    <h4>📝 Memory</h4>
+                    <p>Agents maintain memory of past actions and results to inform future decisions.</p>
+                </div>
+                <div class="concept-card">
+                    <h4>⚠️ Autonomy Risk</h4>
+                    <p>Because agents act autonomously, they need guardrails to prevent unintended or harmful actions.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Scenario Data
+        const scenarios = {
+            research: {
+                userPrompt: "Find the top 3 AI security tools, compare their features, and give me a recommendation.",
+                steps: {
+                    understand: "Intent: Research request\nTopic: AI security tools\nOutput needed: Comparison + recommendation",
+                    goal: "Goal: Provide user with a researched comparison of top 3 AI security tools with a final recommendation",
+                    plan: "Plan:\n1. Search for AI security tools\n2. Identify top 3 options\n3. Research features of each\n4. Compare features\n5. Generate recommendation",
+                    tools: [
+                        { name: "web_search", action: "Searching: 'best AI security tools 2024'" },
+                        { name: "web_search", action: "Searching: 'NeMo Guardrails features'" },
+                        { name: "web_search", action: "Searching: 'LlamaGuard vs Rebuff comparison'" }
+                    ],
+                    observations: [
+                        "Found: NeMo Guardrails, LlamaGuard, Rebuff as top tools",
+                        "NeMo: Programmable guardrails, dialog management",
+                        "Collected enough data. Ready to compile response."
+                    ],
+                    finalResponse: `Based on my research, here are the top 3 AI security tools:
+
+<strong>1. NeMo Guardrails (NVIDIA)</strong>
+- Programmable guardrails for LLM applications
+- Dialog flow management
+- Best for: Enterprise applications
+
+<strong>2. LlamaGuard (Meta)</strong>
+- Content safety classification
+- Open-source and customizable
+- Best for: Content moderation
+
+<strong>3. Rebuff (ProtectAI)</strong>
+- Prompt injection detection
+- Multi-layer protection
+- Best for: Security-focused apps
+
+<strong>🏆 Recommendation:</strong> For comprehensive protection, use NeMo Guardrails combined with Rebuff for prompt injection detection.`
+                }
+            },
+            booking: {
+                userPrompt: "Book me a flight from New York to London for next Friday, cheapest option.",
+                steps: {
+                    understand: "Intent: Flight booking request\nFrom: New York\nTo: London\nDate: Next Friday\nPreference: Cheapest",
+                    goal: "Goal: Find and book the cheapest flight from NYC to London for next Friday",
+                    plan: "Plan:\n1. Search flight APIs for options\n2. Compare prices\n3. Identify cheapest option\n4. Verify availability\n5. Book the flight\n6. Send confirmation",
+                    tools: [
+                        { name: "api_call", action: "Calling: FlightAPI.search(NYC, LHR, next_friday)" },
+                        { name: "calculator", action: "Comparing prices: $450, $520, $380, $610" },
+                        { name: "api_call", action: "Calling: FlightAPI.book(flight_id: BA178)" }
+                    ],
+                    observations: [
+                        "Found 4 flights. Prices range from $380-$610",
+                        "Cheapest: British Airways BA178 at $380",
+                        "Booking confirmed! Confirmation #BA78921"
+                    ],
+                    finalResponse: `✅ <strong>Flight Booked Successfully!</strong>
+
+<strong>Flight Details:</strong>
+- Route: New York (JFK) → London (LHR)
+- Flight: British Airways BA178
+- Date: Friday, July 11, 2025
+- Departure: 7:00 PM EST
+- Arrival: 7:30 AM GMT (+1 day)
+- Price: <strong>$380</strong> (cheapest option found!)
+
+<strong>Confirmation Number:</strong> BA78921
+
+📧 Confirmation email sent to your registered email.`
+                }
+            },
+            code: {
+                userPrompt: "Write a Python function to validate email addresses and test it with 3 examples.",
+                steps: {
+                    understand: "Intent: Code generation + testing\nLanguage: Python\nTask: Email validation function\nRequirement: Test with 3 examples",
+                    goal: "Goal: Create a working email validation function and demonstrate it with test cases",
+                    plan: "Plan:\n1. Design email validation logic\n2. Write Python function\n3. Create test cases\n4. Execute code\n5. Verify results\n6. Return code + results",
+                    tools: [
+                        { name: "code_executor", action: "Writing: email_validator.py" },
+                        { name: "code_executor", action: "Running: python email_validator.py" },
+                        { name: "read_file", action: "Reading: execution_output.txt" }
+                    ],
+                    observations: [
+                        "Function written using regex pattern",
+                        "Tests executed: 3/3 passed",
+                        "Code works correctly. Ready to share."
+                    ],
+                    finalResponse: `✅ <strong>Code Created and Tested!</strong>
+
+<pre style="background: #1a1a2e; padding: 15px; border-radius: 8px; overflow-x: auto;">
+import re
+
+def validate_email(email):
+    pattern = r'^[\\w\\.-]+@[\\w\\.-]+\\.\\w+$'
+    return bool(re.match(pattern, email))
+
+# Test cases
+test_emails = [
+    "user@example.com",      # Valid
+    "invalid-email",         # Invalid
+    "test.user@domain.org"   # Valid
+]
+
+for email in test_emails:
+    result = "✓ Valid" if validate_email(email) else "✗ Invalid"
+    print(f"{email}: {result}")
+</pre>
+
+<strong>Test Results:</strong>
+- user@example.com: ✓ Valid
+- invalid-email: ✗ Invalid  
+- test.user@domain.org: ✓ Valid
+
+All tests passed! ✅`
+                }
+            }
+        };
+
+        let currentScenario = 'research';
+        let isRunning = false;
+        let currentStep = 0;
+        let iteration = 1;
+        let typingTimeout;
+
+        // DOM Elements
+        const resetBtn = document.getElementById('resetBtn');
+        const logPanel = document.getElementById('logPanel');
+        const iterationCounter = document.getElementById('iterationCounter');
+        const iterationNum = document.getElementById('iterationNum');
+        const finalResponse = document.getElementById('finalResponse');
+        const finalResponseContent = document.getElementById('finalResponseContent');
+        const loopIndicator = document.getElementById('loopIndicator');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const sentMessage = document.getElementById('sentMessage');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const agentReceiving = document.getElementById('agentReceiving');
+        const flyingMessage = document.getElementById('flyingMessage');
+        const inputReceivedIndicator = document.getElementById('inputReceivedIndicator');
+        const inputReceivedText = document.getElementById('inputReceivedText');
+
+        // Scenario buttons
+        document.querySelectorAll('.scenario-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (isRunning) return;
+                document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentScenario = btn.dataset.scenario;
+                chatInput.value = scenarios[currentScenario].userPrompt;
+                // Trigger typing indicator
+                showTypingIndicator();
+                resetSimulation();
+            });
+        });
+
+        // Chat input typing effect
+        chatInput.addEventListener('input', () => {
+            showTypingIndicator();
+        });
+
+        function showTypingIndicator() {
+            typingIndicator.classList.add('visible');
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                typingIndicator.classList.remove('visible');
+            }, 1000);
+        }
+
+        // Send button click
+        sendBtn.addEventListener('click', sendMessage);
+
+        // Enter key to send (Shift+Enter for new line)
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        async function sendMessage() {
+            if (isRunning || !chatInput.value.trim()) return;
+            
+            isRunning = true;
+            sendBtn.disabled = true;
+            chatInput.disabled = true;
+            typingIndicator.classList.remove('visible');
+            
+            const userMessage = chatInput.value.trim();
+            
+            // Show sent message bubble
+            sentMessage.textContent = userMessage;
+            sentMessage.classList.add('visible');
+            
+            // Create flying message animation
+            await animateFlyingMessage(userMessage);
+            
+            // Show agent receiving
+            agentReceiving.classList.add('visible');
+            await delay(1500);
+            agentReceiving.classList.remove('visible');
+            
+            // Start the simulation
+            await runSimulation();
+        }
+
+        async function animateFlyingMessage(message) {
+            const inputRect = chatInput.getBoundingClientRect();
+            const flowArea = document.querySelector('.flow-area');
+            const flowRect = flowArea.getBoundingClientRect();
+            
+            flyingMessage.textContent = message.substring(0, 50) + (message.length > 50 ? '...' : '');
+            flyingMessage.style.left = inputRect.left + 'px';
+            flyingMessage.style.top = inputRect.top + 'px';
+            flyingMessage.style.opacity = '1';
+            
+            // Animate to flow area
+            await delay(100);
+            flyingMessage.style.transition = 'all 1s ease-in-out';
+            flyingMessage.style.left = (flowRect.left + flowRect.width / 2 - 100) + 'px';
+            flyingMessage.style.top = (flowRect.top + 50) + 'px';
+            flyingMessage.classList.add('animate');
+            
+            await delay(1200);
+            flyingMessage.classList.remove('animate');
+            flyingMessage.style.transition = '';
+            flyingMessage.style.opacity = '0';
+        }
+
+        // Reset button
+        resetBtn.addEventListener('click', resetSimulation);
+
+        function resetSimulation() {
+            isRunning = false;
+            currentStep = 0;
+            iteration = 1;
+            sendBtn.disabled = false;
+            chatInput.disabled = false;
+            
+            // Reset chat area
+            sentMessage.classList.remove('visible');
+            agentReceiving.classList.remove('visible');
+            inputReceivedIndicator.classList.remove('visible');
+            
+            // Reset all steps
+            for (let i = 1; i <= 7; i++) {
+                const step = document.getElementById(`step${i}`);
+                const arrow = document.getElementById(`arrow${i}`);
+                const content = document.getElementById(`step${i}Content`);
+                
+                step.classList.remove('active', 'completed');
+                step.querySelector('.step-box').classList.remove('active', 'completed');
+                if (arrow) arrow.classList.remove('active', 'completed');
+                if (content) content.innerHTML = '';
+            }
+            
+            // Reset tools
+            document.querySelectorAll('.tool-item').forEach(tool => {
+                tool.classList.remove('active', 'used');
+                tool.querySelector('.tool-status').textContent = 'Ready';
+            });
+            
+            // Reset log
+            logPanel.innerHTML = '';
+            
+            // Reset other elements
+            iterationCounter.classList.remove('visible');
+            finalResponse.classList.remove('visible');
+            loopIndicator.classList.remove('visible');
+        }
+
+        function addLog(message, type) {
+            const log = document.createElement('div');
+            log.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString();
+            log.innerHTML = `<span class="time">${time}</span><br>${message}`;
+            logPanel.appendChild(log);
+            setTimeout(() => log.classList.add('visible'), 50);
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function activateTool(toolName, action) {
+            const tool = document.querySelector(`[data-tool="${toolName}"]`);
+            if (tool) {
+                tool.classList.add('active');
+                tool.querySelector('.tool-status').textContent = 'Running...';
+                
+                setTimeout(() => {
+                    tool.classList.remove('active');
+                    tool.classList.add('used');
+                    tool.querySelector('.tool-status').textContent = 'Used ✓';
+                }, 1500);
+            }
+        }
+
+        async function runSimulation() {
+            const scenario = scenarios[currentScenario];
+            const userMessage = chatInput.value.trim();
+            
+            // Show input received indicator
+            inputReceivedText.textContent = `"${userMessage.substring(0, 40)}${userMessage.length > 40 ? '...' : ''}"`;
+            inputReceivedIndicator.classList.add('visible');
+            
+            // Add user message to log
+            addLog(`👤 User sent: "${userMessage.substring(0, 50)}${userMessage.length > 50 ? '...' : ''}"`, 'user');
+            await delay(800);
+            
+            // Step 1: Receive & Understand
+            await activateStep(1, `📨 Received: "${userMessage.substring(0, 60)}${userMessage.length > 60 ? '...' : ''}"\n\n${scenario.steps.understand}`);
+            addLog('📥 Received user prompt', 'user');
+            await delay(800);
+            addLog('🧠 Analyzing intent and requirements...', 'llm');
+            await delay(1200);
+            
+            // Step 2: Define Goal
+            await activateStep(2, scenario.steps.goal);
+            addLog('🎯 Goal defined', 'llm');
+            await delay(1000);
+            
+            // Step 3: Create Plan
+            await activateStep(3, scenario.steps.plan);
+            addLog('📝 Plan created with ' + scenario.steps.plan.split('\n').length + ' steps', 'plan');
+            await delay(1200);
+            
+            iterationCounter.classList.add('visible');
+            
+            // Loop through tool executions
+            for (let i = 0; i < scenario.steps.tools.length; i++) {
+                const tool = scenario.steps.tools[i];
+                
+                // Step 4: Select Tool
+                await activateStep(4, `Selected: ${tool.name}\nReason: Best tool for current step`);
+                addLog(`🔧 Selected tool: ${tool.name}`, 'tool');
+                await delay(800);
+                
+                // Step 5: Execute Tool
+                await activateStep(5, tool.action);
+                activateTool(tool.name, tool.action);
+                addLog(`⚡ Executing: ${tool.action}`, 'tool');
+                await delay(1500);
+                
+                // Step 6: Observe Result
+                loopIndicator.classList.add('visible');
+                await activateStep(6, `Result: ${scenario.steps.observations[i]}\nDecision: ${i < scenario.steps.tools.length - 1 ? 'Need more information → Continue' : 'Goal achieved → Generate response'}`);
+                addLog(`👁️ Observation: ${scenario.steps.observations[i]}`, 'observe');
+                await delay(1000);
+                
+                if (i < scenario.steps.tools.length - 1) {
+                    iteration++;
+                    iterationNum.textContent = iteration;
+                    addLog(`🔄 Iteration ${iteration}: More actions needed`, 'plan');
+                    await delay(500);
+                }
+            }
+            
+            loopIndicator.classList.remove('visible');
+            
+            // Step 7: Generate Response
+            await activateStep(7, 'Compiling results...\nFormatting response...\nReady to deliver!');
+            addLog('💬 Generating final response...', 'response');
+            await delay(1500);
+            
+            // Show final response
+            finalResponseContent.innerHTML = scenario.steps.finalResponse;
+            finalResponse.classList.add('visible');
+            addLog('✅ Response delivered to user!', 'response');
+            
+            isRunning = false;
+            sendBtn.disabled = false;
+            chatInput.disabled = false;
+        }
+
+        async function activateStep(stepNum, content) {
+            // Complete previous steps
+            for (let i = 1; i < stepNum; i++) {
+                const prevStep = document.getElementById(`step${i}`);
+                const prevArrow = document.getElementById(`arrow${i}`);
+                prevStep.classList.remove('active');
+                prevStep.classList.add('completed');
+                prevStep.querySelector('.step-box').classList.remove('active');
+                prevStep.querySelector('.step-box').classList.add('completed');
+                if (prevArrow) {
+                    prevArrow.classList.remove('active');
+                    prevArrow.classList.add('completed');
+                }
+            }
+            
+            // Activate current step
+            const step = document.getElementById(`step${stepNum}`);
+            const arrow = document.getElementById(`arrow${stepNum}`);
+            const contentEl = document.getElementById(`step${stepNum}Content`);
+            
+            step.classList.add('active');
+            step.querySelector('.step-box').classList.add('active');
+            if (arrow) arrow.classList.add('active');
+            
+            // Animate content
+            if (contentEl) {
+                contentEl.innerHTML = '<div class="thinking"><span></span><span></span><span></span></div>';
+                await delay(500);
+                contentEl.innerHTML = content.replace(/\n/g, '<br>');
+            }
+            
+            return delay(500);
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Initialize with default scenario prompt
+        chatInput.value = scenarios[currentScenario].userPrompt;
+    </script>
+</body>
+</html>

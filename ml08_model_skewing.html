@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML08: Model Skewing - Interactive Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .header h1 { font-size: 2.2em; color: #9c27b0; margin-bottom: 10px; }
+        .header .subtitle { color: #ce93d8; font-size: 1.2em; }
+        
+        .attacker-goal {
+            background: linear-gradient(135deg, rgba(233, 69, 96, 0.2), rgba(233, 69, 96, 0.05));
+            border: 2px solid #e94560;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .attacker-goal h3 { color: #e94560; margin-bottom: 10px; }
+        .attacker-goal p { color: #ccc; line-height: 1.6; }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .step-dot {
+            width: 45px; height: 45px;
+            border-radius: 50%;
+            background: #2a2a4a;
+            border: 3px solid #4a4a6a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .step-dot:hover { transform: scale(1.1); border-color: #9c27b0; }
+        .step-dot.active { background: #9c27b0; border-color: #9c27b0; transform: scale(1.15); }
+        .step-dot.completed { background: #4caf50; border-color: #4caf50; }
+        
+        .step-content { display: none; animation: fadeIn 0.5s ease; }
+        .step-content.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card-title { font-size: 1.4rem; margin-bottom: 15px; color: #ce93d8; }
+        
+        .distribution-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 5px;
+            height: 200px;
+            padding: 20px;
+            background: #0d1117;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .bar {
+            width: 30px;
+            background: linear-gradient(to top, #4caf50, #8bc34a);
+            border-radius: 5px 5px 0 0;
+            transition: all 0.5s ease;
+        }
+        .bar.skewed {
+            background: linear-gradient(to top, #e94560, #ff6b6b);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .btn-prev { background: transparent; border: 2px solid #9c27b0; color: #9c27b0; }
+        .btn-prev:hover:not(:disabled) { background: #9c27b0; color: #fff; }
+        .btn-next { background: linear-gradient(90deg, #9c27b0, #673ab7); color: #fff; }
+        .btn-next:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 5px 20px rgba(156, 39, 176, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .code-block {
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Consolas', monospace;
+            overflow-x: auto;
+        }
+        .code-block .comment { color: #6a737d; }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .string { color: #a5d6ff; }
+        
+        .recommendation-box {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.05));
+            border: 2px solid #4caf50;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        .recommendation-box h3 { color: #4caf50; margin-bottom: 15px; }
+        .recommendation-box ul { list-style: none; padding: 0; }
+        .recommendation-box li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            color: #ccc;
+        }
+        .recommendation-box li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #9c27b0;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
+        .back-link:hover { text-decoration: underline; }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        .comparison-box {
+            background: #0d1117;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .comparison-box.training { border: 2px solid #4caf50; }
+        .comparison-box.production { border: 2px solid #e94560; }
+        
+        @media (max-width: 768px) {
+            .comparison-grid { grid-template-columns: 1fr; }
+            .header h1 { font-size: 1.6em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to All Simulations</a>
+        
+        <header class="header">
+            <h1>📐 ML08: Model Skewing</h1>
+            <p class="subtitle">Exploiting Training-Production Data Drift</p>
+        </header>
+        
+        <div class="attacker-goal">
+            <h3>🎯 Attacker's Goal</h3>
+            <p>Manipulate the production environment or input distribution to cause model behavior to deviate from training expectations. By exploiting the difference between what the model was trained on versus what it encounters in production, attackers can cause systematic failures without modifying the model itself.</p>
+        </div>
+        
+        <div class="step-indicator">
+            <div class="step-dot active" onclick="goToStep(1)">1</div>
+            <div class="step-dot" onclick="goToStep(2)">2</div>
+            <div class="step-dot" onclick="goToStep(3)">3</div>
+            <div class="step-dot" onclick="goToStep(4)">4</div>
+            <div class="step-dot" onclick="goToStep(5)">5</div>
+            <div class="step-dot" onclick="goToStep(6)">6</div>
+        </div>
+        
+        <!-- Step 1: Normal Distribution -->
+        <div class="step-content active" id="step1">
+            <div class="card">
+                <h2 class="card-title">📋 Step 1: Training Data Distribution</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">The model was trained on data with a specific distribution. It performs well when production data matches this distribution.</p>
+                
+                <div class="comparison-grid">
+                    <div class="comparison-box training">
+                        <h4 style="color: #4caf50; margin-bottom: 15px;">Training Distribution</h4>
+                        <div class="distribution-chart">
+                            <div class="bar" style="height: 30%;"></div>
+                            <div class="bar" style="height: 50%;"></div>
+                            <div class="bar" style="height: 80%;"></div>
+                            <div class="bar" style="height: 100%;"></div>
+                            <div class="bar" style="height: 100%;"></div>
+                            <div class="bar" style="height: 80%;"></div>
+                            <div class="bar" style="height: 50%;"></div>
+                            <div class="bar" style="height: 30%;"></div>
+                        </div>
+                        <p style="color: #888;">Normal distribution centered at mean</p>
+                    </div>
+                    <div class="comparison-box training">
+                        <h4 style="color: #4caf50; margin-bottom: 15px;">Expected Production</h4>
+                        <div class="distribution-chart">
+                            <div class="bar" style="height: 30%;"></div>
+                            <div class="bar" style="height: 50%;"></div>
+                            <div class="bar" style="height: 80%;"></div>
+                            <div class="bar" style="height: 100%;"></div>
+                            <div class="bar" style="height: 100%;"></div>
+                            <div class="bar" style="height: 80%;"></div>
+                            <div class="bar" style="height: 50%;"></div>
+                            <div class="bar" style="height: 30%;"></div>
+                        </div>
+                        <p style="color: #888;">Same distribution = Good performance ✓</p>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 10px; border-left: 4px solid #4caf50;">
+                    <p style="color: #ccc;"><strong style="color: #4caf50;">Assumption:</strong> ML models assume production data will resemble training data. When this assumption breaks, so does model performance.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 2: Attack Vector -->
+        <div class="step-content" id="step2">
+            <div class="card">
+                <h2 class="card-title">⚔️ Step 2: Inducing Distribution Shift</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">Attackers manipulate the production environment to create data drift.</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 15px; border: 1px solid #e94560;">
+                        <h4 style="color: #e94560; margin-bottom: 10px;">🌐 Environment Manipulation</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Change lighting, camera angles, or sensor conditions to shift input distribution.</p>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 20px; border-radius: 15px; border: 1px solid #ff9800;">
+                        <h4 style="color: #ff9800; margin-bottom: 10px;">📊 Input Flooding</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Send many requests from unusual distribution to bias online-learning models.</p>
+                    </div>
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 20px; border-radius: 15px; border: 1px solid #9c27b0;">
+                        <h4 style="color: #9c27b0; margin-bottom: 10px;">⏰ Temporal Drift</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Exploit natural changes over time that weren't captured in training.</p>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 15px; border: 1px solid #2196f3;">
+                        <h4 style="color: #2196f3; margin-bottom: 10px;">🎭 Feature Covariate Shift</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Subtle changes to input features that push model out of comfort zone.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 3: Attack Execution -->
+        <div class="step-content" id="step3">
+            <div class="card">
+                <h2 class="card-title">💥 Step 3: Skewed Distribution Attack</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">The attacker shifts the production distribution away from training.</p>
+                
+                <div class="comparison-grid">
+                    <div class="comparison-box training">
+                        <h4 style="color: #4caf50; margin-bottom: 15px;">Training Distribution</h4>
+                        <div class="distribution-chart">
+                            <div class="bar" style="height: 30%;"></div>
+                            <div class="bar" style="height: 50%;"></div>
+                            <div class="bar" style="height: 80%;"></div>
+                            <div class="bar" style="height: 100%;"></div>
+                            <div class="bar" style="height: 100%;"></div>
+                            <div class="bar" style="height: 80%;"></div>
+                            <div class="bar" style="height: 50%;"></div>
+                            <div class="bar" style="height: 30%;"></div>
+                        </div>
+                        <p style="color: #888;">Model trained on this</p>
+                    </div>
+                    <div class="comparison-box production">
+                        <h4 style="color: #e94560; margin-bottom: 15px;">Skewed Production</h4>
+                        <div class="distribution-chart">
+                            <div class="bar skewed" style="height: 100%;"></div>
+                            <div class="bar skewed" style="height: 90%;"></div>
+                            <div class="bar skewed" style="height: 60%;"></div>
+                            <div class="bar skewed" style="height: 30%;"></div>
+                            <div class="bar skewed" style="height: 15%;"></div>
+                            <div class="bar skewed" style="height: 5%;"></div>
+                            <div class="bar skewed" style="height: 2%;"></div>
+                            <div class="bar skewed" style="height: 1%;"></div>
+                        </div>
+                        <p style="color: #e94560;">Shifted distribution = Model fails!</p>
+                    </div>
+                </div>
+                
+                <div style="background: #0d1117; padding: 20px; border-radius: 15px; margin-top: 20px;">
+                    <h4 style="color: #e94560; margin-bottom: 15px;">📉 Accuracy Drop Under Skew</h4>
+                    <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
+                        <span style="width: 120px;">No Skew:</span>
+                        <div style="flex: 1; height: 25px; background: #333; border-radius: 12px; overflow: hidden;">
+                            <div style="width: 95%; height: 100%; background: #4caf50;"></div>
+                        </div>
+                        <span style="color: #4caf50;">95%</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
+                        <span style="width: 120px;">Mild Skew:</span>
+                        <div style="flex: 1; height: 25px; background: #333; border-radius: 12px; overflow: hidden;">
+                            <div style="width: 75%; height: 100%; background: #ff9800;"></div>
+                        </div>
+                        <span style="color: #ff9800;">75%</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
+                        <span style="width: 120px;">Severe Skew:</span>
+                        <div style="flex: 1; height: 25px; background: #333; border-radius: 12px; overflow: hidden;">
+                            <div style="width: 45%; height: 100%; background: #e94560;"></div>
+                        </div>
+                        <span style="color: #e94560;">45%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 4: Real-World Examples -->
+        <div class="step-content" id="step4">
+            <div class="card">
+                <h2 class="card-title">🌍 Step 4: Real-World Attack Scenarios</h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div style="background: #0d1117; padding: 20px; border-radius: 15px; border-left: 4px solid #e94560;">
+                        <h4 style="color: #e94560; margin-bottom: 10px;">🚗 Autonomous Vehicles</h4>
+                        <p style="color: #888; margin-bottom: 10px;">Scenario:</p>
+                        <p style="color: #aaa; font-size: 0.9em;">Model trained on sunny California roads. Attacker operates in foggy conditions or nighttime, causing perception failures.</p>
+                    </div>
+                    <div style="background: #0d1117; padding: 20px; border-radius: 15px; border-left: 4px solid #ff9800;">
+                        <h4 style="color: #ff9800; margin-bottom: 10px;">💳 Fraud Detection</h4>
+                        <p style="color: #888; margin-bottom: 10px;">Scenario:</p>
+                        <p style="color: #aaa; font-size: 0.9em;">Fraudsters adapt behavior to appear more like legitimate users, exploiting distribution assumptions.</p>
+                    </div>
+                    <div style="background: #0d1117; padding: 20px; border-radius: 15px; border-left: 4px solid #9c27b0;">
+                        <h4 style="color: #9c27b0; margin-bottom: 10px;">📧 Spam Filters</h4>
+                        <p style="color: #888; margin-bottom: 10px;">Scenario:</p>
+                        <p style="color: #aaa; font-size: 0.9em;">Spammers evolve language and formatting to shift away from known spam patterns.</p>
+                    </div>
+                    <div style="background: #0d1117; padding: 20px; border-radius: 15px; border-left: 4px solid #2196f3;">
+                        <h4 style="color: #2196f3; margin-bottom: 10px;">🏥 Medical Imaging</h4>
+                        <p style="color: #888; margin-bottom: 10px;">Scenario:</p>
+                        <p style="color: #aaa; font-size: 0.9em;">Different scanner manufacturers or patient demographics cause model degradation.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 5: Detection Challenges -->
+        <div class="step-content" id="step5">
+            <div class="card">
+                <h2 class="card-title">🔍 Step 5: Why Skewing is Hard to Detect</h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #e94560;">
+                        <h4 style="color: #f48fb1; margin-bottom: 10px;">🎭 Silent Degradation</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Model doesn't crash - it just becomes less accurate. No obvious errors to trigger alerts.</p>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                        <h4 style="color: #ffb74d; margin-bottom: 10px;">📊 Gradual Shift</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Changes may be slow and subtle, looking like natural variation.</p>
+                    </div>
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #9c27b0;">
+                        <h4 style="color: #ce93d8; margin-bottom: 10px;">🏷️ No Ground Truth</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">In production, you often don't have labels to verify model correctness.</p>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #2196f3;">
+                        <h4 style="color: #64b5f6; margin-bottom: 10px;">🌊 Concept Drift Confusion</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Hard to distinguish malicious skew from natural concept drift.</p>
+                    </div>
+                </div>
+                
+                <div class="code-block">
+                    <span class="comment"># Detection: Monitor input distribution</span><br>
+                    <span class="keyword">def</span> detect_drift(training_dist, production_samples):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;production_dist = compute_distribution(production_samples)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;drift_score = kl_divergence(training_dist, production_dist)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span> drift_score > THRESHOLD:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;alert(<span class="string">"⚠️ Distribution drift detected!"</span>)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> <span class="string">True</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> <span class="string">False</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 6: Recommendations -->
+        <div class="step-content" id="step6">
+            <div class="card">
+                <h2 class="card-title">🛡️ Step 6: Developer Recommendations</h2>
+                
+                <div class="recommendation-box">
+                    <h3>✅ Defense Strategies</h3>
+                    <ul>
+                        <li><strong>Distribution Monitoring:</strong> Continuously track input feature distributions</li>
+                        <li><strong>Drift Detection:</strong> Implement KL divergence, PSI, or other drift metrics</li>
+                        <li><strong>Model Uncertainty:</strong> Track confidence scores - drops indicate potential skew</li>
+                        <li><strong>Diverse Training Data:</strong> Train on varied conditions to improve robustness</li>
+                        <li><strong>A/B Testing:</strong> Compare model versions to detect degradation</li>
+                        <li><strong>Feedback Loops:</strong> Collect production labels to validate predictions</li>
+                        <li><strong>Retraining Pipelines:</strong> Regularly retrain on recent data</li>
+                        <li><strong>Fallback Systems:</strong> Have rule-based backups for high-uncertainty cases</li>
+                    </ul>
+                </div>
+                
+                <div class="code-block" style="margin-top: 20px;">
+                    <span class="comment"># Production drift monitoring pipeline</span><br>
+                    <span class="keyword">class</span> DriftMonitor:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">def</span> __init__(self, training_features):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.baseline = compute_stats(training_features)<br><br>
+                    
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">def</span> check(self, production_batch):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;current = compute_stats(production_batch)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;psi = population_stability_index(self.baseline, current)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span> psi > <span class="string">0.25</span>:  <span class="comment"># Significant drift</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;trigger_alert(psi)
+                </div>
+                
+                <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; margin-top: 20px; border-left: 4px solid #2196f3;">
+                    <h4 style="color: #2196f3; margin-bottom: 10px;">📖 Key Takeaway</h4>
+                    <p style="color: #ccc;">ML models are only as good as their training data assumptions. Monitor production inputs continuously, detect drift early, and build systems that gracefully handle distribution shifts rather than silently failing.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-prev" id="prevBtn" onclick="prevStep()" disabled>← Previous</button>
+            <button class="btn btn-next" id="nextBtn" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+    
+    <script>
+        let currentStep = 1;
+        const totalSteps = 6;
+        
+        function updateUI() {
+            document.querySelectorAll('.step-dot').forEach((dot, index) => {
+                dot.classList.remove('active', 'completed');
+                if (index + 1 === currentStep) dot.classList.add('active');
+                else if (index + 1 < currentStep) dot.classList.add('completed');
+            });
+            
+            document.querySelectorAll('.step-content').forEach((content, index) => {
+                content.classList.remove('active');
+                if (index + 1 === currentStep) content.classList.add('active');
+            });
+            
+            document.getElementById('prevBtn').disabled = currentStep === 1;
+            document.getElementById('nextBtn').textContent = currentStep === totalSteps ? 'Finish ✓' : 'Next →';
+        }
+        
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateUI();
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+        
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateUI();
+            }
+        }
+        
+        function goToStep(step) {
+            currentStep = step;
+            updateUI();
+        }
+    </script>
+</body>
+</html>

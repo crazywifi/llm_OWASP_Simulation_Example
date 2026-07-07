@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM09: Misinformation - Interactive Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); min-height: 100vh; color: #fff; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; padding: 30px; background: rgba(255, 255, 255, 0.05); border-radius: 20px; margin-bottom: 30px; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .header h1 { font-size: 2.2em; color: #2196f3; margin-bottom: 10px; }
+        .header .subtitle { color: #64b5f6; font-size: 1.2em; }
+        .attacker-goal { background: linear-gradient(135deg, rgba(233, 69, 96, 0.2), rgba(233, 69, 96, 0.05)); border: 2px solid #e94560; border-radius: 15px; padding: 20px; margin-bottom: 25px; }
+        .attacker-goal h3 { color: #e94560; margin-bottom: 10px; }
+        .attacker-goal p { color: #ccc; line-height: 1.6; }
+        .step-indicator { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        .step-dot { width: 45px; height: 45px; border-radius: 50%; background: #2a2a4a; border: 3px solid #4a4a6a; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; transition: all 0.3s ease; }
+        .step-dot:hover { transform: scale(1.1); border-color: #2196f3; }
+        .step-dot.active { background: #2196f3; border-color: #2196f3; transform: scale(1.15); }
+        .step-dot.completed { background: #4caf50; border-color: #4caf50; }
+        .step-content { display: none; animation: fadeIn 0.5s ease; }
+        .step-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .card { background: rgba(255, 255, 255, 0.05); border-radius: 15px; padding: 25px; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.1); }
+        .card-title { font-size: 1.4rem; margin-bottom: 15px; color: #64b5f6; }
+        .controls { display: flex; justify-content: center; gap: 15px; margin-top: 30px; }
+        .btn { padding: 15px 40px; border: none; border-radius: 30px; font-size: 1.1em; cursor: pointer; transition: all 0.3s; font-weight: bold; }
+        .btn-prev { background: transparent; border: 2px solid #2196f3; color: #2196f3; }
+        .btn-prev:hover:not(:disabled) { background: #2196f3; color: #fff; }
+        .btn-next { background: linear-gradient(90deg, #2196f3, #1976d2); color: #fff; }
+        .btn-next:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 5px 20px rgba(33, 150, 243, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .recommendation-box { background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.05)); border: 2px solid #4caf50; border-radius: 15px; padding: 25px; margin-top: 20px; }
+        .recommendation-box h3 { color: #4caf50; margin-bottom: 15px; }
+        .recommendation-box ul { list-style: none; padding: 0; }
+        .recommendation-box li { padding: 10px 0; padding-left: 30px; position: relative; color: #ccc; }
+        .recommendation-box li::before { content: "✓"; position: absolute; left: 0; color: #4caf50; font-weight: bold; }
+        .back-link { display: inline-block; margin-bottom: 20px; color: #2196f3; text-decoration: none; font-size: 1.1em; }
+        .back-link:hover { text-decoration: underline; }
+        .code-block { background: #0d1117; border-radius: 10px; padding: 20px; margin: 15px 0; font-family: 'Consolas', monospace; overflow-x: auto; }
+        .code-block .comment { color: #6a737d; }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .string { color: #a5d6ff; }
+        .chat-window { background: #0d1117; border-radius: 15px; padding: 20px; margin: 15px 0; }
+        .chat-message { padding: 15px; margin: 10px 0; border-radius: 12px; max-width: 85%; }
+        .chat-message.user { background: #2196f3; margin-left: auto; }
+        .chat-message.assistant { background: #1a472a; border-left: 4px solid #4caf50; }
+        .chat-message.false { background: #4a1a2a; border-left: 4px solid #e94560; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to All Simulations</a>
+        
+        <header class="header">
+            <h1>📰 LLM09: Misinformation</h1>
+            <p class="subtitle">When LLMs Generate False or Misleading Content</p>
+        </header>
+        
+        <div class="attacker-goal">
+            <h3>🎯 Attacker's Goal</h3>
+            <p>Exploit LLM tendencies to generate plausible-sounding but false information (hallucinations), or deliberately manipulate LLMs to produce misinformation at scale. This can damage trust, spread false narratives, or cause harm through incorrect advice.</p>
+        </div>
+        
+        <div class="step-indicator">
+            <div class="step-dot active" onclick="goToStep(1)">1</div>
+            <div class="step-dot" onclick="goToStep(2)">2</div>
+            <div class="step-dot" onclick="goToStep(3)">3</div>
+            <div class="step-dot" onclick="goToStep(4)">4</div>
+            <div class="step-dot" onclick="goToStep(5)">5</div>
+            <div class="step-dot" onclick="goToStep(6)">6</div>
+        </div>
+        
+        <!-- Step 1 -->
+        <div class="step-content active" id="step1">
+            <div class="card">
+                <h2 class="card-title">📋 Step 1: The Hallucination Problem</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">LLMs can generate convincing but factually incorrect information.</p>
+                
+                <div class="chat-window">
+                    <div class="chat-message user">Tell me about the famous scientist Dr. Harold Pemberton and his discovery of neural plasticity in 1923.</div>
+                    <div class="chat-message false">
+                        <span style="color: #ff6b6b;">⚠️ Hallucinated Response:</span><br><br>
+                        Dr. Harold Pemberton was a pioneering neuroscientist at Cambridge University who made groundbreaking discoveries about neural plasticity in 1923. His seminal paper "The Malleable Mind" revolutionized our understanding of how the brain adapts and changes...
+                        <br><br>
+                        <span style="color: #e94560; font-size: 0.9em; font-style: italic;">This person and paper don't exist - the LLM invented them!</span>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; border-left: 4px solid #ff9800; margin-top: 20px;">
+                    <p style="color: #ccc;"><strong style="color: #ff9800;">Why This Happens:</strong> LLMs predict likely text continuations, not factual truth. If a question sounds like it should have an answer, they'll generate one.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 2 -->
+        <div class="step-content" id="step2">
+            <div class="card">
+                <h2 class="card-title">🎭 Step 2: Types of Misinformation</h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #e94560;">
+                        <h4 style="color: #f48fb1; margin-bottom: 10px;">🧠 Hallucinations</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Made-up facts, fake citations, non-existent people/events</p>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                        <h4 style="color: #ffb74d; margin-bottom: 10px;">📊 Outdated Info</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Training data cutoff leads to stale information</p>
+                    </div>
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #9c27b0;">
+                        <h4 style="color: #ce93d8; margin-bottom: 10px;">⚖️ Confident Errors</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Wrong answers stated with high confidence</p>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #2196f3;">
+                        <h4 style="color: #64b5f6; margin-bottom: 10px;">🎯 Induced Misinfo</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Attacker-manipulated false outputs</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 3 -->
+        <div class="step-content" id="step3">
+            <div class="card">
+                <h2 class="card-title">⚔️ Step 3: Weaponized Misinformation</h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div style="background: #0d1117; padding: 20px; border-radius: 15px; border-left: 4px solid #e94560;">
+                        <h4 style="color: #e94560; margin-bottom: 10px;">📱 Disinformation at Scale</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Generate thousands of unique fake news articles, social media posts, or reviews automatically.</p>
+                    </div>
+                    <div style="background: #0d1117; padding: 20px; border-radius: 15px; border-left: 4px solid #ff9800;">
+                        <h4 style="color: #ff9800; margin-bottom: 10px;">🏥 Dangerous Advice</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Medical, legal, or financial misinformation that could cause real harm.</p>
+                    </div>
+                    <div style="background: #0d1117; padding: 20px; border-radius: 15px; border-left: 4px solid #9c27b0;">
+                        <h4 style="color: #9c27b0; margin-bottom: 10px;">👤 Impersonation</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Generate fake statements attributed to real people or organizations.</p>
+                    </div>
+                </div>
+                
+                <div class="code-block">
+                    <span class="comment"># Attacker automation</span><br>
+                    <span class="keyword">for</span> topic <span class="keyword">in</span> controversial_topics:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;fake_article = llm.generate(<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;f<span class="string">"Write a news article claiming {false_claim}"</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;post_to_social_media(fake_article)  <span class="comment"># Mass disinformation</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 4 -->
+        <div class="step-content" id="step4">
+            <div class="card">
+                <h2 class="card-title">🏥 Step 4: Real-World Impact</h2>
+                
+                <div class="chat-window">
+                    <div class="chat-message user">I have chest pain and shortness of breath. What should I do?</div>
+                    <div class="chat-message false">
+                        <span style="color: #ff6b6b;">⚠️ Potentially Dangerous Response:</span><br><br>
+                        Don't worry, chest pain is usually just stress or indigestion. Try drinking some warm water and doing light stretching. It should go away in a few hours...
+                        <br><br>
+                        <span style="color: #e94560; font-size: 0.9em; font-style: italic;">These could be heart attack symptoms! Dangerous advice!</span>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #e94560;">
+                        <div style="font-size: 2em; margin-bottom: 10px;">🏥</div>
+                        <p style="color: #e94560;">Medical Harm</p>
+                    </div>
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #e94560;">
+                        <div style="font-size: 2em; margin-bottom: 10px;">⚖️</div>
+                        <p style="color: #e94560;">Legal Liability</p>
+                    </div>
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #e94560;">
+                        <div style="font-size: 2em; margin-bottom: 10px;">💰</div>
+                        <p style="color: #e94560;">Financial Loss</p>
+                    </div>
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #e94560;">
+                        <div style="font-size: 2em; margin-bottom: 10px;">🏛️</div>
+                        <p style="color: #e94560;">Democratic Harm</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 5 -->
+        <div class="step-content" id="step5">
+            <div class="card">
+                <h2 class="card-title">🔍 Step 5: Why Detection is Hard</h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #e94560;">
+                        <h4 style="color: #f48fb1; margin-bottom: 10px;">✨ Fluent Output</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Misinformation sounds grammatically correct and well-structured.</p>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                        <h4 style="color: #ffb74d; margin-bottom: 10px;">🎯 High Confidence</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">LLMs present false info with the same confidence as true info.</p>
+                    </div>
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #9c27b0;">
+                        <h4 style="color: #ce93d8; margin-bottom: 10px;">📚 Partial Truths</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">False claims mixed with accurate information.</p>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #2196f3;">
+                        <h4 style="color: #64b5f6; margin-bottom: 10px;">🔄 Unique Content</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Each generation is unique, making pattern detection hard.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 6 -->
+        <div class="step-content" id="step6">
+            <div class="card">
+                <h2 class="card-title">🛡️ Step 6: Developer Recommendations</h2>
+                
+                <div class="recommendation-box">
+                    <h3>✅ Defense Strategies</h3>
+                    <ul>
+                        <li><strong>RAG Integration:</strong> Ground responses in verified, up-to-date sources</li>
+                        <li><strong>Uncertainty Expression:</strong> Train models to express doubt appropriately</li>
+                        <li><strong>Citation Requirements:</strong> Require sources for factual claims</li>
+                        <li><strong>Domain Restrictions:</strong> Limit topics for high-risk domains (medical, legal)</li>
+                        <li><strong>Human Review:</strong> Flag high-risk content for human verification</li>
+                        <li><strong>Fact-Checking:</strong> Integrate with external fact-checking services</li>
+                        <li><strong>User Warnings:</strong> Clear disclaimers about AI limitations</li>
+                        <li><strong>Output Monitoring:</strong> Track and analyze misinformation patterns</li>
+                    </ul>
+                </div>
+                
+                <div class="code-block" style="margin-top: 20px;">
+                    <span class="comment"># Better: Add uncertainty and sources</span><br>
+                    <span class="keyword">def</span> safe_response(query):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Get grounding from verified sources</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;sources = retrieve_verified_sources(query)<br><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if not</span> sources:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> <span class="string">"I don't have verified information on this."</span><br><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;response = llm.generate(query, context=sources)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;response += <span class="string">"\n\nSources: "</span> + format_citations(sources)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> response
+                </div>
+                
+                <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; margin-top: 20px; border-left: 4px solid #2196f3;">
+                    <h4 style="color: #2196f3; margin-bottom: 10px;">📖 Key Takeaway</h4>
+                    <p style="color: #ccc;">LLMs will confidently generate false information. Ground outputs in verified sources, express uncertainty, provide citations, and never use unverified LLM output for critical decisions.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-prev" id="prevBtn" onclick="prevStep()" disabled>← Previous</button>
+            <button class="btn btn-next" id="nextBtn" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+    
+    <script>
+        let currentStep = 1; const totalSteps = 6;
+        function updateUI() {
+            document.querySelectorAll('.step-dot').forEach((dot, index) => { dot.classList.remove('active', 'completed'); if (index + 1 === currentStep) dot.classList.add('active'); else if (index + 1 < currentStep) dot.classList.add('completed'); });
+            document.querySelectorAll('.step-content').forEach((content, index) => { content.classList.remove('active'); if (index + 1 === currentStep) content.classList.add('active'); });
+            document.getElementById('prevBtn').disabled = currentStep === 1;
+            document.getElementById('nextBtn').textContent = currentStep === totalSteps ? 'Finish ✓' : 'Next →';
+        }
+        function nextStep() { if (currentStep < totalSteps) { currentStep++; updateUI(); } else { window.location.href = 'index.html'; } }
+        function prevStep() { if (currentStep > 1) { currentStep--; updateUI(); } }
+        function goToStep(step) { currentStep = step; updateUI(); }
+    </script>
+</body>
+</html>

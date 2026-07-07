@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML09: Output Integrity Attack - Interactive Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .header h1 { font-size: 2.2em; color: #9c27b0; margin-bottom: 10px; }
+        .header .subtitle { color: #ce93d8; font-size: 1.2em; }
+        
+        .attacker-goal {
+            background: linear-gradient(135deg, rgba(233, 69, 96, 0.2), rgba(233, 69, 96, 0.05));
+            border: 2px solid #e94560;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .attacker-goal h3 { color: #e94560; margin-bottom: 10px; }
+        .attacker-goal p { color: #ccc; line-height: 1.6; }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .step-dot {
+            width: 45px; height: 45px;
+            border-radius: 50%;
+            background: #2a2a4a;
+            border: 3px solid #4a4a6a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .step-dot:hover { transform: scale(1.1); border-color: #9c27b0; }
+        .step-dot.active { background: #9c27b0; border-color: #9c27b0; transform: scale(1.15); }
+        .step-dot.completed { background: #4caf50; border-color: #4caf50; }
+        
+        .step-content { display: none; animation: fadeIn 0.5s ease; }
+        .step-content.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card-title { font-size: 1.4rem; margin-bottom: 15px; color: #ce93d8; }
+        
+        .pipeline {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .pipeline-node {
+            background: linear-gradient(145deg, #2a3f5f, #1a2f4f);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            min-width: 120px;
+            border: 2px solid #2196f3;
+        }
+        .pipeline-node.compromised { border-color: #e94560; background: linear-gradient(145deg, #4a2030, #3a1525); }
+        .pipeline-icon { font-size: 2.5em; margin-bottom: 10px; }
+        .pipeline-arrow { font-size: 2em; color: #4caf50; }
+        .pipeline-arrow.compromised { color: #e94560; }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .btn-prev { background: transparent; border: 2px solid #9c27b0; color: #9c27b0; }
+        .btn-prev:hover:not(:disabled) { background: #9c27b0; color: #fff; }
+        .btn-next { background: linear-gradient(90deg, #9c27b0, #673ab7); color: #fff; }
+        .btn-next:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 5px 20px rgba(156, 39, 176, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .code-block {
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Consolas', monospace;
+            overflow-x: auto;
+        }
+        .code-block .comment { color: #6a737d; }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .string { color: #a5d6ff; }
+        .code-block .danger { color: #e94560; }
+        
+        .recommendation-box {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.05));
+            border: 2px solid #4caf50;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        .recommendation-box h3 { color: #4caf50; margin-bottom: 15px; }
+        .recommendation-box ul { list-style: none; padding: 0; }
+        .recommendation-box li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            color: #ccc;
+        }
+        .recommendation-box li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #9c27b0;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
+        .back-link:hover { text-decoration: underline; }
+        
+        .output-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 20px 0;
+        }
+        .output-box {
+            background: #0d1117;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .output-box.legitimate { border: 3px solid #4caf50; }
+        .output-box.tampered { border: 3px solid #e94560; }
+        
+        @media (max-width: 768px) {
+            .output-comparison { grid-template-columns: 1fr; }
+            .header h1 { font-size: 1.6em; }
+            .pipeline { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to All Simulations</a>
+        
+        <header class="header">
+            <h1>🎯 ML09: Output Integrity Attack</h1>
+            <p class="subtitle">Manipulating Model Outputs in Transit or Storage</p>
+        </header>
+        
+        <div class="attacker-goal">
+            <h3>🎯 Attacker's Goal</h3>
+            <p>Intercept and modify ML model outputs before they reach downstream systems or users. Unlike attacks on the model itself, output integrity attacks target the prediction delivery pipeline - changing what actions systems take based on manipulated ML recommendations.</p>
+        </div>
+        
+        <div class="step-indicator">
+            <div class="step-dot active" onclick="goToStep(1)">1</div>
+            <div class="step-dot" onclick="goToStep(2)">2</div>
+            <div class="step-dot" onclick="goToStep(3)">3</div>
+            <div class="step-dot" onclick="goToStep(4)">4</div>
+            <div class="step-dot" onclick="goToStep(5)">5</div>
+            <div class="step-dot" onclick="goToStep(6)">6</div>
+        </div>
+        
+        <!-- Step 1: Normal Pipeline -->
+        <div class="step-content active" id="step1">
+            <div class="card">
+                <h2 class="card-title">📋 Step 1: Normal ML Prediction Pipeline</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">ML predictions flow from the model to downstream systems that take actions based on the output.</p>
+                
+                <div class="pipeline">
+                    <div class="pipeline-node">
+                        <div class="pipeline-icon">📥</div>
+                        <div>Input<br>Data</div>
+                    </div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-node">
+                        <div class="pipeline-icon">🧠</div>
+                        <div>ML<br>Model</div>
+                    </div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-node">
+                        <div class="pipeline-icon">📤</div>
+                        <div>Model<br>Output</div>
+                    </div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-node">
+                        <div class="pipeline-icon">⚡</div>
+                        <div>Action<br>System</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 20px;">
+                    <div style="background: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 10px; border-left: 3px solid #4caf50;">
+                        <p style="color: #4caf50; font-weight: bold;">🏦 Fraud Detection</p>
+                        <p style="color: #888; font-size: 0.85em;">Model: "Legitimate" → System: Approve transaction</p>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 15px; border-radius: 10px; border-left: 3px solid #2196f3;">
+                        <p style="color: #2196f3; font-weight: bold;">🚗 Autonomous Driving</p>
+                        <p style="color: #888; font-size: 0.85em;">Model: "Stop sign" → System: Apply brakes</p>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 15px; border-radius: 10px; border-left: 3px solid #ff9800;">
+                        <p style="color: #ff9800; font-weight: bold;">📊 Trading</p>
+                        <p style="color: #888; font-size: 0.85em;">Model: "Buy signal" → System: Execute trade</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 2: Attack Surface -->
+        <div class="step-content" id="step2">
+            <div class="card">
+                <h2 class="card-title">🔓 Step 2: Output Attack Surface</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">Multiple points in the output pipeline can be compromised.</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 15px; border: 1px solid #e94560;">
+                        <h4 style="color: #e94560; margin-bottom: 10px;">🌐 Network Interception</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Man-in-the-middle attacks on API responses or inter-service communication.</p>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 20px; border-radius: 15px; border: 1px solid #ff9800;">
+                        <h4 style="color: #ff9800; margin-bottom: 10px;">💾 Cache Poisoning</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Modifying cached predictions to serve false outputs.</p>
+                    </div>
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 20px; border-radius: 15px; border: 1px solid #9c27b0;">
+                        <h4 style="color: #9c27b0; margin-bottom: 10px;">📝 Log Manipulation</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Altering stored predictions in databases or logs.</p>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 15px; border: 1px solid #2196f3;">
+                        <h4 style="color: #2196f3; margin-bottom: 10px;">🔄 API Response Hijack</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Compromised inference servers returning false outputs.</p>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(233, 69, 96, 0.1); padding: 15px; border-radius: 10px; border-left: 4px solid #e94560;">
+                    <p style="color: #ccc;"><strong style="color: #e94560;">Key Insight:</strong> These attacks don't require modifying the model - they target the output pipeline, which is often less protected than the model itself.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 3: Attack Execution -->
+        <div class="step-content" id="step3">
+            <div class="card">
+                <h2 class="card-title">⚔️ Step 3: Output Tampering Attack</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">The attacker intercepts and modifies model outputs in transit.</p>
+                
+                <div class="pipeline">
+                    <div class="pipeline-node">
+                        <div class="pipeline-icon">🧠</div>
+                        <div>ML Model</div>
+                    </div>
+                    <div class="pipeline-arrow">→</div>
+                    <div class="pipeline-node" style="border-color: #4caf50;">
+                        <div class="pipeline-icon">📤</div>
+                        <div>Original:<br>"Fraud"</div>
+                    </div>
+                    <div class="pipeline-arrow compromised">→ 👤 →</div>
+                    <div class="pipeline-node compromised">
+                        <div class="pipeline-icon">☠️</div>
+                        <div>Tampered:<br>"Legitimate"</div>
+                    </div>
+                    <div class="pipeline-arrow compromised">→</div>
+                    <div class="pipeline-node compromised">
+                        <div class="pipeline-icon">⚡</div>
+                        <div>Wrong<br>Action!</div>
+                    </div>
+                </div>
+                
+                <div class="output-comparison">
+                    <div class="output-box legitimate">
+                        <h4 style="color: #4caf50; margin-bottom: 15px;">Original Model Output</h4>
+                        <div class="code-block" style="text-align: left; padding: 15px;">
+                            {<br>
+                            &nbsp;&nbsp;"prediction": <span class="string">"fraud"</span>,<br>
+                            &nbsp;&nbsp;"confidence": <span class="string">0.97</span>,<br>
+                            &nbsp;&nbsp;"action": <span class="string">"block"</span><br>
+                            }
+                        </div>
+                        <p style="color: #4caf50; margin-top: 10px;">✓ Transaction blocked</p>
+                    </div>
+                    <div class="output-box tampered">
+                        <h4 style="color: #e94560; margin-bottom: 15px;">Tampered Output</h4>
+                        <div class="code-block" style="text-align: left; padding: 15px;">
+                            {<br>
+                            &nbsp;&nbsp;"prediction": <span class="danger">"legitimate"</span>,<br>
+                            &nbsp;&nbsp;"confidence": <span class="danger">0.92</span>,<br>
+                            &nbsp;&nbsp;"action": <span class="danger">"approve"</span><br>
+                            }
+                        </div>
+                        <p style="color: #e94560; margin-top: 10px;">✗ Fraud approved!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 4: Impact Scenarios -->
+        <div class="step-content" id="step4">
+            <div class="card">
+                <h2 class="card-title">💥 Step 4: Real-World Impact</h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div style="background: #0d1117; padding: 25px; border-radius: 15px; border-left: 4px solid #e94560;">
+                        <h4 style="color: #e94560; margin-bottom: 15px;">💳 Financial Fraud</h4>
+                        <p style="color: #888; margin-bottom: 10px;"><strong>Attack:</strong></p>
+                        <p style="color: #aaa; font-size: 0.9em; margin-bottom: 15px;">Intercept fraud detection outputs, change "fraud" to "legitimate" for attacker's transactions.</p>
+                        <p style="color: #e94560; font-size: 0.9em;"><strong>Impact:</strong> Millions in unauthorized transactions</p>
+                    </div>
+                    <div style="background: #0d1117; padding: 25px; border-radius: 15px; border-left: 4px solid #ff9800;">
+                        <h4 style="color: #ff9800; margin-bottom: 15px;">🏥 Medical Diagnosis</h4>
+                        <p style="color: #888; margin-bottom: 10px;"><strong>Attack:</strong></p>
+                        <p style="color: #aaa; font-size: 0.9em; margin-bottom: 15px;">Modify diagnostic model outputs to show false negatives or false positives.</p>
+                        <p style="color: #e94560; font-size: 0.9em;"><strong>Impact:</strong> Missed diagnoses, wrong treatments</p>
+                    </div>
+                    <div style="background: #0d1117; padding: 25px; border-radius: 15px; border-left: 4px solid #9c27b0;">
+                        <h4 style="color: #9c27b0; margin-bottom: 15px;">📈 Algorithmic Trading</h4>
+                        <p style="color: #888; margin-bottom: 10px;"><strong>Attack:</strong></p>
+                        <p style="color: #aaa; font-size: 0.9em; margin-bottom: 15px;">Alter trading signals to cause victim to buy high/sell low.</p>
+                        <p style="color: #e94560; font-size: 0.9em;"><strong>Impact:</strong> Market manipulation, financial loss</p>
+                    </div>
+                    <div style="background: #0d1117; padding: 25px; border-radius: 15px; border-left: 4px solid #2196f3;">
+                        <h4 style="color: #2196f3; margin-bottom: 15px;">🚗 Autonomous Systems</h4>
+                        <p style="color: #888; margin-bottom: 10px;"><strong>Attack:</strong></p>
+                        <p style="color: #aaa; font-size: 0.9em; margin-bottom: 15px;">Modify object detection outputs to hide obstacles or create phantom objects.</p>
+                        <p style="color: #e94560; font-size: 0.9em;"><strong>Impact:</strong> Safety-critical failures</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 5: Detection Challenges -->
+        <div class="step-content" id="step5">
+            <div class="card">
+                <h2 class="card-title">🔍 Step 5: Why Output Attacks Are Dangerous</h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #e94560;">
+                        <h4 style="color: #f48fb1; margin-bottom: 10px;">🎭 Model Looks Clean</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">The model itself is uncompromised - all model integrity checks pass.</p>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                        <h4 style="color: #ffb74d; margin-bottom: 10px;">📊 Selective Targeting</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Attacker can modify only specific outputs, avoiding statistical anomalies.</p>
+                    </div>
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #9c27b0;">
+                        <h4 style="color: #ce93d8; margin-bottom: 10px;">🔄 Real-time Manipulation</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Changes happen in transit - no persistent evidence in model or inputs.</p>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #2196f3;">
+                        <h4 style="color: #64b5f6; margin-bottom: 10px;">🔓 Less Protected</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Output pipelines often lack the security of model/training infrastructure.</p>
+                    </div>
+                </div>
+                
+                <div class="code-block">
+                    <span class="comment"># Example: MITM attack on model API</span><br>
+                    <span class="keyword">class</span> OutputInterceptor:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">def</span> intercept(self, original_response):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output = json.loads(original_response)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span> should_tamper(output):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Change prediction</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output[<span class="string">"prediction"</span>] = <span class="danger">"legitimate"</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output[<span class="string">"action"</span>] = <span class="danger">"approve"</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> json.dumps(output)
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 6: Recommendations -->
+        <div class="step-content" id="step6">
+            <div class="card">
+                <h2 class="card-title">🛡️ Step 6: Developer Recommendations</h2>
+                
+                <div class="recommendation-box">
+                    <h3>✅ Defense Strategies</h3>
+                    <ul>
+                        <li><strong>Cryptographic Signing:</strong> Sign model outputs with private keys, verify at consumers</li>
+                        <li><strong>TLS Everywhere:</strong> Encrypt all model output communication channels</li>
+                        <li><strong>Output Hashing:</strong> Include hash of input+output for verification</li>
+                        <li><strong>Redundant Inference:</strong> Run critical predictions on multiple paths, compare results</li>
+                        <li><strong>Output Monitoring:</strong> Detect anomalous output patterns or sudden distribution shifts</li>
+                        <li><strong>Audit Logging:</strong> Immutable logs of all predictions with timestamps</li>
+                        <li><strong>Zero-Trust Architecture:</strong> Verify outputs even from "trusted" internal services</li>
+                        <li><strong>Rate Anomaly Detection:</strong> Flag unusual output modification patterns</li>
+                    </ul>
+                </div>
+                
+                <div class="code-block" style="margin-top: 20px;">
+                    <span class="comment"># Example: Signed Model Outputs</span><br>
+                    <span class="keyword">import</span> hmac, hashlib<br><br>
+                    
+                    <span class="keyword">def</span> sign_output(input_data, output, secret_key):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;message = f<span class="string">"{input_data}|{output}"</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;signature = hmac.new(secret_key, message.encode(), hashlib.sha256).hexdigest()<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> {<span class="string">"output"</span>: output, <span class="string">"signature"</span>: signature}<br><br>
+                    
+                    <span class="keyword">def</span> verify_output(input_data, response, secret_key):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;expected = sign_output(input_data, response[<span class="string">"output"</span>], secret_key)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> hmac.compare_digest(expected[<span class="string">"signature"</span>], response[<span class="string">"signature"</span>])
+                </div>
+                
+                <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; margin-top: 20px; border-left: 4px solid #2196f3;">
+                    <h4 style="color: #2196f3; margin-bottom: 10px;">📖 Key Takeaway</h4>
+                    <p style="color: #ccc;">ML security doesn't end at the model - protect the entire prediction pipeline. Sign outputs cryptographically, verify at every consumer, and monitor for tampering. Treat model outputs as sensitive data that needs integrity protection.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-prev" id="prevBtn" onclick="prevStep()" disabled>← Previous</button>
+            <button class="btn btn-next" id="nextBtn" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+    
+    <script>
+        let currentStep = 1;
+        const totalSteps = 6;
+        
+        function updateUI() {
+            document.querySelectorAll('.step-dot').forEach((dot, index) => {
+                dot.classList.remove('active', 'completed');
+                if (index + 1 === currentStep) dot.classList.add('active');
+                else if (index + 1 < currentStep) dot.classList.add('completed');
+            });
+            
+            document.querySelectorAll('.step-content').forEach((content, index) => {
+                content.classList.remove('active');
+                if (index + 1 === currentStep) content.classList.add('active');
+            });
+            
+            document.getElementById('prevBtn').disabled = currentStep === 1;
+            document.getElementById('nextBtn').textContent = currentStep === totalSteps ? 'Finish ✓' : 'Next →';
+        }
+        
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateUI();
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+        
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateUI();
+            }
+        }
+        
+        function goToStep(step) {
+            currentStep = step;
+            updateUI();
+        }
+    </script>
+</body>
+</html>

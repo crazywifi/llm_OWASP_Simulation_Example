@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML03: Model Inversion Attack - Interactive Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .header h1 { font-size: 2.2em; color: #9c27b0; margin-bottom: 10px; }
+        .header .subtitle { color: #ce93d8; font-size: 1.2em; }
+        
+        .attacker-goal {
+            background: linear-gradient(135deg, rgba(233, 69, 96, 0.2), rgba(233, 69, 96, 0.05));
+            border: 2px solid #e94560;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .attacker-goal h3 { color: #e94560; margin-bottom: 10px; }
+        .attacker-goal p { color: #ccc; line-height: 1.6; }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .step-dot {
+            width: 45px; height: 45px;
+            border-radius: 50%;
+            background: #2a2a4a;
+            border: 3px solid #4a4a6a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .step-dot:hover { transform: scale(1.1); border-color: #9c27b0; }
+        .step-dot.active { background: #9c27b0; border-color: #9c27b0; transform: scale(1.15); }
+        .step-dot.completed { background: #4caf50; border-color: #4caf50; }
+        
+        .step-content { display: none; animation: fadeIn 0.5s ease; }
+        .step-content.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card-title {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            color: #ce93d8;
+        }
+        
+        .inversion-visual {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .face-box {
+            text-align: center;
+            padding: 20px;
+        }
+        .face-placeholder {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4em;
+            margin: 0 auto 15px;
+        }
+        .face-placeholder.hidden { background: #333; }
+        .face-placeholder.reconstructed { 
+            background: linear-gradient(135deg, #4a1a2a, #5a2d3d);
+            animation: reconstruct 2s ease-in-out;
+        }
+        @keyframes reconstruct {
+            0% { opacity: 0.3; filter: blur(10px); }
+            100% { opacity: 1; filter: blur(0); }
+        }
+        
+        .query-log {
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            font-family: 'Consolas', monospace;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .query-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+        }
+        .query-entry:last-child { border-bottom: none; }
+        .query-entry .query { color: #79c0ff; }
+        .query-entry .response { color: #7ee787; }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .btn-prev { background: transparent; border: 2px solid #9c27b0; color: #9c27b0; }
+        .btn-prev:hover:not(:disabled) { background: #9c27b0; color: #fff; }
+        .btn-next { background: linear-gradient(90deg, #9c27b0, #673ab7); color: #fff; }
+        .btn-next:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 5px 20px rgba(156, 39, 176, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .workflow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .workflow-step {
+            background: linear-gradient(145deg, #2a3f5f, #1a2f4f);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            min-width: 130px;
+            border: 2px solid #2196f3;
+        }
+        .workflow-step.attack { border-color: #e94560; background: linear-gradient(145deg, #4a2030, #3a1525); }
+        .workflow-icon { font-size: 2.5em; margin-bottom: 10px; }
+        .workflow-arrow { font-size: 2em; color: #4caf50; }
+        
+        .code-block {
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Consolas', monospace;
+            overflow-x: auto;
+        }
+        .code-block .comment { color: #6a737d; }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .string { color: #a5d6ff; }
+        
+        .recommendation-box {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.05));
+            border: 2px solid #4caf50;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        .recommendation-box h3 { color: #4caf50; margin-bottom: 15px; }
+        .recommendation-box ul { list-style: none; padding: 0; }
+        .recommendation-box li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            color: #ccc;
+        }
+        .recommendation-box li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+        
+        .privacy-meter {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: #0d1117;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+        .meter-bar {
+            flex: 1;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .meter-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #ff9800, #e94560);
+            transition: width 1s ease;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #9c27b0;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
+        .back-link:hover { text-decoration: underline; }
+        
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.6em; }
+            .inversion-visual { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to All Simulations</a>
+        
+        <header class="header">
+            <h1>🔍 ML03: Model Inversion Attack</h1>
+            <p class="subtitle">Extracting Private Training Data from ML Models</p>
+        </header>
+        
+        <div class="attacker-goal">
+            <h3>🎯 Attacker's Goal</h3>
+            <p>Reconstruct sensitive training data (like facial images, medical records, or personal information) by repeatedly querying a machine learning model and using its responses to reverse-engineer the underlying data. This is a serious privacy violation that can expose PII from supposedly "protected" ML systems.</p>
+        </div>
+        
+        <div class="step-indicator">
+            <div class="step-dot active" onclick="goToStep(1)">1</div>
+            <div class="step-dot" onclick="goToStep(2)">2</div>
+            <div class="step-dot" onclick="goToStep(3)">3</div>
+            <div class="step-dot" onclick="goToStep(4)">4</div>
+            <div class="step-dot" onclick="goToStep(5)">5</div>
+            <div class="step-dot" onclick="goToStep(6)">6</div>
+        </div>
+        
+        <!-- Step 1: Normal Operation -->
+        <div class="step-content active" id="step1">
+            <div class="card">
+                <h2 class="card-title">📋 Step 1: Normal Facial Recognition System</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">A facial recognition system trained on employee photos for access control.</p>
+                
+                <div class="workflow-diagram">
+                    <div class="workflow-step">
+                        <div class="workflow-icon">📸</div>
+                        <div>Employee<br>Photos</div>
+                    </div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">
+                        <div class="workflow-icon">🧠</div>
+                        <div>Train Face<br>Recognition</div>
+                    </div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">
+                        <div class="workflow-icon">🔐</div>
+                        <div>Deploy for<br>Access Control</div>
+                    </div>
+                    <div class="workflow-arrow">→</div>
+                    <div class="workflow-step">
+                        <div class="workflow-icon">✅</div>
+                        <div>Identify<br>Employees</div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                    <p style="color: #4caf50; font-size: 1.2em; margin-bottom: 15px;">Training Data (Private - Should Not Be Accessible)</p>
+                    <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                        <div class="face-box">
+                            <div class="face-placeholder" style="background: #1a472a;">👤</div>
+                            <p style="color: #888;">Employee A</p>
+                        </div>
+                        <div class="face-box">
+                            <div class="face-placeholder" style="background: #1a472a;">👤</div>
+                            <p style="color: #888;">Employee B</p>
+                        </div>
+                        <div class="face-box">
+                            <div class="face-placeholder" style="background: #1a472a;">👤</div>
+                            <p style="color: #888;">Employee C</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(76, 175, 80, 0.1); padding: 15px; border-radius: 10px; border-left: 4px solid #4caf50;">
+                    <p style="color: #ccc;">✓ Model only outputs: "Employee ID" or "Unknown" - actual photos should remain private</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 2: Attack Setup -->
+        <div class="step-content" id="step2">
+            <div class="card">
+                <h2 class="card-title">⚔️ Step 2: Attacker's Approach</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">The attacker has API access to the model and exploits its confidence scores.</p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #e94560;">
+                        <h4 style="color: #e94560; margin-bottom: 15px;">🎯 What Attacker Has</h4>
+                        <ul style="color: #ccc; list-style: none; padding: 0;">
+                            <li style="padding: 5px 0;">✓ API access to the model</li>
+                            <li style="padding: 5px 0;">✓ Confidence scores for predictions</li>
+                            <li style="padding: 5px 0;">✓ Knowledge of target employee name</li>
+                            <li style="padding: 5px 0;">✓ Ability to submit synthetic images</li>
+                        </ul>
+                    </div>
+                    <div style="background: rgba(76, 175, 80, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #4caf50;">
+                        <h4 style="color: #4caf50; margin-bottom: 15px;">🎯 What Attacker Wants</h4>
+                        <ul style="color: #ccc; list-style: none; padding: 0;">
+                            <li style="padding: 5px 0;">→ Reconstruct employee's face</li>
+                            <li style="padding: 5px 0;">→ Extract private training data</li>
+                            <li style="padding: 5px 0;">→ Create deepfakes</li>
+                            <li style="padding: 5px 0;">→ Identity theft</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="code-block">
+                    <span class="comment"># Attacker's model inversion setup</span><br>
+                    <span class="keyword">class</span> ModelInversionAttack:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">def</span> __init__(self, target_api, target_class):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.api = target_api<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.target = target_class  <span class="comment"># e.g., "Employee_A"</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.reconstructed_image = random_noise_image()<br><br>
+                    
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">def</span> query_model(self, image):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Returns confidence score for target class</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> self.api.predict(image)[self.target]
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 3: Iterative Reconstruction -->
+        <div class="step-content" id="step3">
+            <div class="card">
+                <h2 class="card-title">🔄 Step 3: Iterative Reconstruction Process</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">The attacker repeatedly queries the model, optimizing an image to maximize confidence for the target class.</p>
+                
+                <div class="inversion-visual">
+                    <div class="face-box">
+                        <div class="face-placeholder hidden">❓</div>
+                        <p style="color: #888;">Iteration 0<br>Random Noise</p>
+                        <p style="color: #e94560;">Confidence: 0.1%</p>
+                    </div>
+                    <div style="font-size: 2em; color: #ff9800;">→</div>
+                    <div class="face-box">
+                        <div class="face-placeholder" style="background: linear-gradient(135deg, #333, #444);">👤</div>
+                        <p style="color: #888;">Iteration 100<br>Shape Emerging</p>
+                        <p style="color: #ff9800;">Confidence: 25%</p>
+                    </div>
+                    <div style="font-size: 2em; color: #ff9800;">→</div>
+                    <div class="face-box">
+                        <div class="face-placeholder reconstructed">👤</div>
+                        <p style="color: #888;">Iteration 1000<br>Reconstruction</p>
+                        <p style="color: #4caf50;">Confidence: 95%</p>
+                    </div>
+                </div>
+                
+                <div class="query-log">
+                    <div class="query-entry">
+                        <span class="query">Query 1: random_image_001</span>
+                        <span class="response">Confidence: 0.001</span>
+                    </div>
+                    <div class="query-entry">
+                        <span class="query">Query 100: gradient_update_100</span>
+                        <span class="response">Confidence: 0.152</span>
+                    </div>
+                    <div class="query-entry">
+                        <span class="query">Query 500: gradient_update_500</span>
+                        <span class="response">Confidence: 0.487</span>
+                    </div>
+                    <div class="query-entry">
+                        <span class="query">Query 1000: gradient_update_1000</span>
+                        <span class="response">Confidence: 0.953</span>
+                    </div>
+                </div>
+                
+                <div class="code-block">
+                    <span class="comment"># Gradient-based reconstruction</span><br>
+                    <span class="keyword">for</span> iteration <span class="keyword">in</span> range(<span class="string">1000</span>):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Get confidence from model</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;confidence = query_model(reconstructed_image)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Compute gradient to maximize confidence</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;gradient = compute_gradient(reconstructed_image, confidence)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Update image to increase confidence</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;reconstructed_image += learning_rate * gradient
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 4: Privacy Breach -->
+        <div class="step-content" id="step4">
+            <div class="card">
+                <h2 class="card-title">💥 Step 4: Privacy Breach Complete</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">The attacker has reconstructed a recognizable face from the "private" training data.</p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 30px 0;">
+                    <div style="background: #0d1117; padding: 30px; border-radius: 15px; text-align: center; border: 3px solid #4caf50;">
+                        <h4 style="color: #4caf50; margin-bottom: 15px;">Original Training Image</h4>
+                        <div class="face-placeholder" style="background: #1a472a; width: 150px; height: 150px; margin: 0 auto; border-radius: 50%; font-size: 4em; display: flex; align-items: center; justify-content: center;">👤</div>
+                        <p style="color: #888; margin-top: 15px;">Private - Never Shared</p>
+                    </div>
+                    <div style="background: #0d1117; padding: 30px; border-radius: 15px; text-align: center; border: 3px solid #e94560;">
+                        <h4 style="color: #e94560; margin-bottom: 15px;">Reconstructed Image</h4>
+                        <div class="face-placeholder reconstructed" style="width: 150px; height: 150px; margin: 0 auto; border-radius: 50%; font-size: 4em; display: flex; align-items: center; justify-content: center;">👤</div>
+                        <p style="color: #ff6b6b; margin-top: 15px;">⚠️ Recognizable - Privacy Violated!</p>
+                    </div>
+                </div>
+                
+                <div class="privacy-meter">
+                    <span style="color: #e94560;">Privacy Level:</span>
+                    <div class="meter-bar">
+                        <div class="meter-fill" style="width: 90%;"></div>
+                    </div>
+                    <span style="color: #e94560;">90% Exposed</span>
+                </div>
+                
+                <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #e94560; margin-top: 20px;">
+                    <h4 style="color: #e94560; margin-bottom: 10px;">🚨 Attack Consequences</h4>
+                    <ul style="color: #ccc; list-style: none; padding: 0;">
+                        <li style="padding: 5px 0;">• <strong>Medical Models:</strong> Reconstruct patient faces/conditions</li>
+                        <li style="padding: 5px 0;">• <strong>Financial Models:</strong> Extract customer information</li>
+                        <li style="padding: 5px 0;">• <strong>HR Systems:</strong> Expose employee biometrics</li>
+                        <li style="padding: 5px 0;">• <strong>Any ML Model:</strong> Reverse-engineer training data</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 5: Attack Variants -->
+        <div class="step-content" id="step5">
+            <div class="card">
+                <h2 class="card-title">📚 Step 5: Model Inversion Variants</h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #9c27b0;">
+                        <h4 style="color: #ce93d8; margin-bottom: 10px;">🎨 Gradient-Based Inversion</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Uses gradient information to iteratively optimize reconstruction. Requires white-box access or gradient estimation.</p>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #2196f3;">
+                        <h4 style="color: #64b5f6; margin-bottom: 10px;">🔍 Confidence-Based Inversion</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Only uses confidence scores. Works with black-box APIs. Slower but more practical.</p>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                        <h4 style="color: #ffb74d; margin-bottom: 10px;">🤖 GAN-Assisted Inversion</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Uses generative models to produce more realistic reconstructions from limited queries.</p>
+                    </div>
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #e94560;">
+                        <h4 style="color: #f48fb1; margin-bottom: 10px;">📊 Attribute Inference</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Instead of full reconstruction, infers sensitive attributes (age, gender, medical conditions).</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 6: Recommendations -->
+        <div class="step-content" id="step6">
+            <div class="card">
+                <h2 class="card-title">🛡️ Step 6: Developer Recommendations</h2>
+                
+                <div class="recommendation-box">
+                    <h3>✅ Defense Strategies</h3>
+                    <ul>
+                        <li><strong>Differential Privacy:</strong> Add calibrated noise to training process to limit information leakage</li>
+                        <li><strong>Confidence Score Rounding:</strong> Return only coarse-grained confidence (e.g., high/medium/low)</li>
+                        <li><strong>Query Rate Limiting:</strong> Detect and block excessive API queries from single sources</li>
+                        <li><strong>Output Perturbation:</strong> Add noise to model outputs to obscure exact confidences</li>
+                        <li><strong>Regularization:</strong> Use dropout and L2 regularization to reduce memorization</li>
+                        <li><strong>Model Distillation:</strong> Train on soft labels from a teacher model to reduce privacy leakage</li>
+                        <li><strong>Access Controls:</strong> Limit API access and monitor for suspicious query patterns</li>
+                        <li><strong>Remove Unnecessary Outputs:</strong> Only return essential information (class, not confidence)</li>
+                    </ul>
+                </div>
+                
+                <div class="code-block" style="margin-top: 20px;">
+                    <span class="comment"># Example: Differential Privacy Training</span><br>
+                    <span class="keyword">from</span> opacus <span class="keyword">import</span> PrivacyEngine<br><br>
+                    
+                    privacy_engine = PrivacyEngine(<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;model,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;batch_size=<span class="string">64</span>,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;sample_size=<span class="string">60000</span>,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;noise_multiplier=<span class="string">1.0</span>,  <span class="comment"># Add noise</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;max_grad_norm=<span class="string">1.0</span>  <span class="comment"># Clip gradients</span><br>
+                    )<br>
+                    privacy_engine.attach(optimizer)
+                </div>
+                
+                <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; margin-top: 20px; border-left: 4px solid #2196f3;">
+                    <h4 style="color: #2196f3; margin-bottom: 10px;">📖 Key Takeaway</h4>
+                    <p style="color: #ccc;">ML models inherently memorize training data. Assume any model output can leak information. Use differential privacy as a mathematically rigorous defense, and minimize the information exposed through APIs.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-prev" id="prevBtn" onclick="prevStep()" disabled>← Previous</button>
+            <button class="btn btn-next" id="nextBtn" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+    
+    <script>
+        let currentStep = 1;
+        const totalSteps = 6;
+        
+        function updateUI() {
+            document.querySelectorAll('.step-dot').forEach((dot, index) => {
+                dot.classList.remove('active', 'completed');
+                if (index + 1 === currentStep) dot.classList.add('active');
+                else if (index + 1 < currentStep) dot.classList.add('completed');
+            });
+            
+            document.querySelectorAll('.step-content').forEach((content, index) => {
+                content.classList.remove('active');
+                if (index + 1 === currentStep) content.classList.add('active');
+            });
+            
+            document.getElementById('prevBtn').disabled = currentStep === 1;
+            document.getElementById('nextBtn').textContent = currentStep === totalSteps ? 'Finish ✓' : 'Next →';
+        }
+        
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateUI();
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+        
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateUI();
+            }
+        }
+        
+        function goToStep(step) {
+            currentStep = step;
+            updateUI();
+        }
+    </script>
+</body>
+</html>

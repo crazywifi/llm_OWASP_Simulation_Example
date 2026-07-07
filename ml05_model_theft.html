@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML05: Model Theft - Interactive Simulation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        
+        .header {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .header h1 { font-size: 2.2em; color: #9c27b0; margin-bottom: 10px; }
+        .header .subtitle { color: #ce93d8; font-size: 1.2em; }
+        
+        .attacker-goal {
+            background: linear-gradient(135deg, rgba(233, 69, 96, 0.2), rgba(233, 69, 96, 0.05));
+            border: 2px solid #e94560;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .attacker-goal h3 { color: #e94560; margin-bottom: 10px; }
+        .attacker-goal p { color: #ccc; line-height: 1.6; }
+        
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .step-dot {
+            width: 45px; height: 45px;
+            border-radius: 50%;
+            background: #2a2a4a;
+            border: 3px solid #4a4a6a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .step-dot:hover { transform: scale(1.1); border-color: #9c27b0; }
+        .step-dot.active { background: #9c27b0; border-color: #9c27b0; transform: scale(1.15); }
+        .step-dot.completed { background: #4caf50; border-color: #4caf50; }
+        
+        .step-content { display: none; animation: fadeIn 0.5s ease; }
+        .step-content.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .card-title { font-size: 1.4rem; margin-bottom: 15px; color: #ce93d8; }
+        
+        .theft-visual {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        .model-box {
+            text-align: center;
+            padding: 30px;
+            border-radius: 15px;
+            min-width: 200px;
+        }
+        .model-box.original {
+            background: linear-gradient(145deg, #1a472a, #2d5a3d);
+            border: 3px solid #4caf50;
+        }
+        .model-box.stolen {
+            background: linear-gradient(145deg, #4a1a2a, #5a2d3d);
+            border: 3px solid #e94560;
+        }
+        .model-icon { font-size: 4em; margin-bottom: 15px; }
+        
+        .query-animation {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .query-arrow {
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(90deg, #4caf50, #e94560);
+            position: relative;
+            animation: queryPulse 1.5s infinite;
+        }
+        @keyframes queryPulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .btn-prev { background: transparent; border: 2px solid #9c27b0; color: #9c27b0; }
+        .btn-prev:hover:not(:disabled) { background: #9c27b0; color: #fff; }
+        .btn-next { background: linear-gradient(90deg, #9c27b0, #673ab7); color: #fff; }
+        .btn-next:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 5px 20px rgba(156, 39, 176, 0.4); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .code-block {
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 15px 0;
+            font-family: 'Consolas', monospace;
+            overflow-x: auto;
+        }
+        .code-block .comment { color: #6a737d; }
+        .code-block .keyword { color: #ff7b72; }
+        .code-block .string { color: #a5d6ff; }
+        
+        .recommendation-box {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(76, 175, 80, 0.05));
+            border: 2px solid #4caf50;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+        }
+        .recommendation-box h3 { color: #4caf50; margin-bottom: 15px; }
+        .recommendation-box ul { list-style: none; padding: 0; }
+        .recommendation-box li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            color: #ccc;
+        }
+        .recommendation-box li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+        
+        .accuracy-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .accuracy-box {
+            background: #0d1117;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .accuracy-value {
+            font-size: 3em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .accuracy-value.original { color: #4caf50; }
+        .accuracy-value.stolen { color: #e94560; }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #9c27b0;
+            text-decoration: none;
+            font-size: 1.1em;
+        }
+        .back-link:hover { text-decoration: underline; }
+        
+        @media (max-width: 768px) {
+            .accuracy-comparison { grid-template-columns: 1fr; }
+            .header h1 { font-size: 1.6em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Back to All Simulations</a>
+        
+        <header class="header">
+            <h1>🕵️ ML05: Model Theft</h1>
+            <p class="subtitle">Stealing Proprietary ML Models Through API Queries</p>
+        </header>
+        
+        <div class="attacker-goal">
+            <h3>🎯 Attacker's Goal</h3>
+            <p>Create a replica of a proprietary ML model by systematically querying its API and training a local "surrogate" model on the responses. This allows competitors to steal years of R&D investment, or attackers to find vulnerabilities in the model offline.</p>
+        </div>
+        
+        <div class="step-indicator">
+            <div class="step-dot active" onclick="goToStep(1)">1</div>
+            <div class="step-dot" onclick="goToStep(2)">2</div>
+            <div class="step-dot" onclick="goToStep(3)">3</div>
+            <div class="step-dot" onclick="goToStep(4)">4</div>
+            <div class="step-dot" onclick="goToStep(5)">5</div>
+            <div class="step-dot" onclick="goToStep(6)">6</div>
+        </div>
+        
+        <!-- Step 1: The Valuable Model -->
+        <div class="step-content active" id="step1">
+            <div class="card">
+                <h2 class="card-title">📋 Step 1: The Target - A Valuable ML Model</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">A company has invested millions in developing a state-of-the-art ML model, available only through a paid API.</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin: 20px 0;">
+                    <div style="background: rgba(76, 175, 80, 0.1); padding: 20px; border-radius: 15px; border: 2px solid #4caf50;">
+                        <h4 style="color: #4caf50; margin-bottom: 15px;">💰 Investment</h4>
+                        <ul style="color: #ccc; list-style: none; padding: 0;">
+                            <li style="padding: 5px 0;">• $5M in training data collection</li>
+                            <li style="padding: 5px 0;">• $2M in compute resources</li>
+                            <li style="padding: 5px 0;">• 2 years of R&D</li>
+                            <li style="padding: 5px 0;">• 50+ ML engineers</li>
+                        </ul>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 15px; border: 2px solid #2196f3;">
+                        <h4 style="color: #2196f3; margin-bottom: 15px;">🔐 Protection Measures</h4>
+                        <ul style="color: #ccc; list-style: none; padding: 0;">
+                            <li style="padding: 5px 0;">• API-only access (no model download)</li>
+                            <li style="padding: 5px 0;">• Per-query pricing ($0.001/query)</li>
+                            <li style="padding: 5px 0;">• Rate limiting (1000 req/min)</li>
+                            <li style="padding: 5px 0;">• Authentication required</li>
+                        </ul>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 20px; border-radius: 15px; border: 2px solid #ff9800;">
+                        <h4 style="color: #ff9800; margin-bottom: 15px;">📊 Model Capabilities</h4>
+                        <ul style="color: #ccc; list-style: none; padding: 0;">
+                            <li style="padding: 5px 0;">• 97% accuracy</li>
+                            <li style="padding: 5px 0;">• 1000+ classes</li>
+                            <li style="padding: 5px 0;">• State-of-the-art performance</li>
+                            <li style="padding: 5px 0;">• Unique architecture</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 2: Attack Strategy -->
+        <div class="step-content" id="step2">
+            <div class="card">
+                <h2 class="card-title">⚔️ Step 2: Model Extraction Strategy</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">The attacker queries the model API and uses responses to train a copycat model.</p>
+                
+                <div class="theft-visual">
+                    <div class="model-box original">
+                        <div class="model-icon">🎯</div>
+                        <h4>Target Model</h4>
+                        <p style="color: #888; font-size: 0.9em;">Proprietary API</p>
+                    </div>
+                    
+                    <div class="query-animation">
+                        <div style="color: #4caf50;">Query: Image →</div>
+                        <div class="query-arrow"></div>
+                        <div style="color: #e94560;">← Response: Labels</div>
+                        <p style="color: #888; font-size: 0.8em;">1,000,000+ queries</p>
+                    </div>
+                    
+                    <div class="model-box stolen">
+                        <div class="model-icon">🥷</div>
+                        <h4>Surrogate Model</h4>
+                        <p style="color: #888; font-size: 0.9em;">Attacker's Clone</p>
+                    </div>
+                </div>
+                
+                <div class="code-block">
+                    <span class="comment"># Model Extraction Attack</span><br>
+                    <span class="keyword">def</span> extract_model(target_api, num_queries=<span class="string">1000000</span>):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;synthetic_data = []<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">for</span> _ <span class="keyword">in</span> range(num_queries):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Generate or sample query input</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;query_input = generate_synthetic_input()<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Get prediction from target</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;prediction = target_api.predict(query_input)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Store input-output pair</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;synthetic_data.append((query_input, prediction))<br><br>
+                    
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Train surrogate model on stolen labels</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;surrogate = train_model(synthetic_data)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> surrogate
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 3: Query Generation -->
+        <div class="step-content" id="step3">
+            <div class="card">
+                <h2 class="card-title">🔄 Step 3: Efficient Query Generation</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">Attackers use various strategies to maximize information extracted per query.</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 20px;">
+                    <div style="background: rgba(156, 39, 176, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #9c27b0;">
+                        <h4 style="color: #ce93d8; margin-bottom: 10px;">🎲 Random Sampling</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Generate random inputs from the input space. Simple but may waste queries on unrealistic inputs.</p>
+                    </div>
+                    <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #2196f3;">
+                        <h4 style="color: #64b5f6; margin-bottom: 10px;">📊 Active Learning</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Query inputs where the surrogate is uncertain. More efficient extraction with fewer queries.</p>
+                    </div>
+                    <div style="background: rgba(255, 152, 0, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #ff9800;">
+                        <h4 style="color: #ffb74d; margin-bottom: 10px;">🔍 Jacobian-Based</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Generate inputs that maximize decision boundary exploration. State-of-the-art extraction.</p>
+                    </div>
+                    <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #e94560;">
+                        <h4 style="color: #f48fb1; margin-bottom: 10px;">📁 Natural Distribution</h4>
+                        <p style="color: #aaa; font-size: 0.9em;">Use public datasets similar to expected inputs. Most realistic surrogate behavior.</p>
+                    </div>
+                </div>
+                
+                <div style="background: #0d1117; padding: 20px; border-radius: 10px; margin-top: 20px;">
+                    <h4 style="color: #ff9800; margin-bottom: 15px;">📈 Query Efficiency Comparison</h4>
+                    <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
+                        <span style="width: 150px;">Random:</span>
+                        <div style="flex: 1; height: 20px; background: #333; border-radius: 10px; overflow: hidden;">
+                            <div style="width: 100%; height: 100%; background: #9c27b0;"></div>
+                        </div>
+                        <span>1,000,000 queries</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
+                        <span style="width: 150px;">Active Learning:</span>
+                        <div style="flex: 1; height: 20px; background: #333; border-radius: 10px; overflow: hidden;">
+                            <div style="width: 40%; height: 100%; background: #2196f3;"></div>
+                        </div>
+                        <span>400,000 queries</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
+                        <span style="width: 150px;">Jacobian-Based:</span>
+                        <div style="flex: 1; height: 20px; background: #333; border-radius: 10px; overflow: hidden;">
+                            <div style="width: 15%; height: 100%; background: #4caf50;"></div>
+                        </div>
+                        <span>150,000 queries</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 4: Stolen Model -->
+        <div class="step-content" id="step4">
+            <div class="card">
+                <h2 class="card-title">💥 Step 4: The Stolen Model</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">The attacker now has a functional replica of the proprietary model.</p>
+                
+                <div class="accuracy-comparison">
+                    <div class="accuracy-box" style="border: 2px solid #4caf50;">
+                        <h4 style="color: #4caf50;">Original Model</h4>
+                        <div class="accuracy-value original">97.2%</div>
+                        <p style="color: #888;">Accuracy</p>
+                        <p style="color: #4caf50; margin-top: 10px;">$7M investment</p>
+                    </div>
+                    <div class="accuracy-box" style="border: 2px solid #e94560;">
+                        <h4 style="color: #e94560;">Stolen Surrogate</h4>
+                        <div class="accuracy-value stolen">94.8%</div>
+                        <p style="color: #888;">Accuracy</p>
+                        <p style="color: #e94560; margin-top: 10px;">$1,500 in API costs</p>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(233, 69, 96, 0.1); padding: 20px; border-radius: 10px; border-left: 4px solid #e94560; margin-top: 20px;">
+                    <h4 style="color: #e94560; margin-bottom: 10px;">🚨 What Attackers Can Do</h4>
+                    <ul style="color: #ccc; list-style: none; padding: 0;">
+                        <li style="padding: 5px 0;">• <strong>Compete unfairly:</strong> Offer cheaper alternative using stolen IP</li>
+                        <li style="padding: 5px 0;">• <strong>Find vulnerabilities:</strong> Test adversarial attacks offline</li>
+                        <li style="padding: 5px 0;">• <strong>Avoid API costs:</strong> Use local model instead of paying</li>
+                        <li style="padding: 5px 0;">• <strong>Reverse engineer:</strong> Understand proprietary techniques</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 5: Economic Impact -->
+        <div class="step-content" id="step5">
+            <div class="card">
+                <h2 class="card-title">💸 Step 5: Economic Impact</h2>
+                
+                <div style="background: #0d1117; padding: 30px; border-radius: 15px; margin: 20px 0;">
+                    <h4 style="color: #e94560; text-align: center; margin-bottom: 20px;">Cost to Steal vs. Cost to Build</h4>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 4em; margin-bottom: 10px;">🏗️</div>
+                            <h4 style="color: #4caf50;">Build Legitimately</h4>
+                            <p style="font-size: 2.5em; color: #4caf50; font-weight: bold;">$7,000,000</p>
+                            <p style="color: #888;">2+ years development</p>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 4em; margin-bottom: 10px;">🥷</div>
+                            <h4 style="color: #e94560;">Steal via Extraction</h4>
+                            <p style="font-size: 2.5em; color: #e94560; font-weight: bold;">$1,500</p>
+                            <p style="color: #888;">Few days of queries</p>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #333;">
+                        <p style="color: #ff9800; font-size: 1.3em;">Cost ratio: <strong>4,666x cheaper to steal</strong></p>
+                    </div>
+                </div>
+                
+                <div style="background: rgba(156, 39, 176, 0.1); padding: 15px; border-radius: 10px; border-left: 4px solid #9c27b0;">
+                    <p style="color: #ccc;"><strong style="color: #ce93d8;">Legal Note:</strong> Model theft may violate terms of service, trade secret laws, and computer fraud statutes - but enforcement is challenging.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Step 6: Recommendations -->
+        <div class="step-content" id="step6">
+            <div class="card">
+                <h2 class="card-title">🛡️ Step 6: Developer Recommendations</h2>
+                
+                <div class="recommendation-box">
+                    <h3>✅ Defense Strategies</h3>
+                    <ul>
+                        <li><strong>Query Rate Limiting:</strong> Restrict queries per user/time period</li>
+                        <li><strong>Anomaly Detection:</strong> Detect unusual query patterns (synthetic inputs, high volume)</li>
+                        <li><strong>Output Perturbation:</strong> Add noise to predictions (trade-off with accuracy)</li>
+                        <li><strong>Watermarking:</strong> Embed detectable signatures in model behavior</li>
+                        <li><strong>API Authentication:</strong> Strong identity verification and audit trails</li>
+                        <li><strong>Query Pricing:</strong> Price per query to make extraction expensive</li>
+                        <li><strong>Confidence Truncation:</strong> Don't return full probability distributions</li>
+                        <li><strong>Ensemble Defenses:</strong> Rotate between model variants</li>
+                    </ul>
+                </div>
+                
+                <div class="code-block" style="margin-top: 20px;">
+                    <span class="comment"># Example: Model Watermarking</span><br>
+                    <span class="keyword">class</span> WatermarkedModel:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">def</span> __init__(self, model, trigger_inputs, trigger_outputs):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.model = model<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment"># Secret trigger patterns</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.triggers = dict(zip(trigger_inputs, trigger_outputs))<br><br>
+                    
+                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">def</span> predict(self, x):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">if</span> x <span class="keyword">in</span> self.triggers:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> self.triggers[x]  <span class="comment"># Watermark signature</span><br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">return</span> self.model.predict(x)
+                </div>
+                
+                <div style="background: rgba(33, 150, 243, 0.1); padding: 20px; border-radius: 10px; margin-top: 20px; border-left: 4px solid #2196f3;">
+                    <h4 style="color: #2196f3; margin-bottom: 10px;">📖 Key Takeaway</h4>
+                    <p style="color: #ccc;">Any model accessible via API can potentially be stolen. Implement layered defenses: rate limiting, anomaly detection, and watermarking. Consider the business trade-off between API accessibility and model protection.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-prev" id="prevBtn" onclick="prevStep()" disabled>← Previous</button>
+            <button class="btn btn-next" id="nextBtn" onclick="nextStep()">Next →</button>
+        </div>
+    </div>
+    
+    <script>
+        let currentStep = 1;
+        const totalSteps = 6;
+        
+        function updateUI() {
+            document.querySelectorAll('.step-dot').forEach((dot, index) => {
+                dot.classList.remove('active', 'completed');
+                if (index + 1 === currentStep) dot.classList.add('active');
+                else if (index + 1 < currentStep) dot.classList.add('completed');
+            });
+            
+            document.querySelectorAll('.step-content').forEach((content, index) => {
+                content.classList.remove('active');
+                if (index + 1 === currentStep) content.classList.add('active');
+            });
+            
+            document.getElementById('prevBtn').disabled = currentStep === 1;
+            document.getElementById('nextBtn').textContent = currentStep === totalSteps ? 'Finish ✓' : 'Next →';
+        }
+        
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                currentStep++;
+                updateUI();
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+        
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateUI();
+            }
+        }
+        
+        function goToStep(step) {
+            currentStep = step;
+            updateUI();
+        }
+    </script>
+</body>
+</html>
